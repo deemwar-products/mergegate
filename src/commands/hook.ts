@@ -17,11 +17,11 @@ fi
 protected="$(${runner} gate --print-branch 2>/dev/null || echo main)"
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  case "$remote_ref" in
-    refs/heads/"$protected")
-      echo "mergegate: running the merge gate before pushing to $protected…" >&2
+  case "\${remote_ref}" in
+    refs/heads/"\${protected}")
+      echo "mergegate: running the merge gate before pushing to \${protected} ..." >&2
       if ! ${runner} gate; then
-        echo "mergegate: ✘ push to $protected BLOCKED — gate not green (override: MERGEGATE_SKIP=1)." >&2
+        echo "mergegate: BLOCKED push to \${protected} -- gate not green (override: MERGEGATE_SKIP=1)." >&2
         exit 1
       fi
       ;;
