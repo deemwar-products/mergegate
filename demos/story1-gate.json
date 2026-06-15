@@ -1,0 +1,67 @@
+{
+  "name": "mergegate-gate",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "Autonomous agents open pull requests now. The good ones are green. The rest just look green." },
+      { "at": "card:turn",   "text": "mergegate puts one gate in front of main. Spec, build, tests, checks — or it does not merge." },
+      { "at": "vhs:gate",    "text": "An agent opens a pull request. mergegate runs every gate, sees a missing spec and a broken test, and blocks it. The agent fixes it properly — and only then does the gate go green." },
+      { "at": "card:outro",  "text": "mergegate. Provably done, or it doesn't touch main. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Agents open PRs now.", "subtitle": "the good ones are green — the rest just look green", "style": "stakes", "duration": 7 },
+    { "id": "turn",   "title": "One gate in front of main.", "subtitle": "spec · build · tests · checks — or it doesn't merge", "style": "brand", "duration": 8.5 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "provably done, or it doesn't touch main", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "gate",
+      "settings": { "FontSize": 26, "TypingSpeed": "35ms", "Padding": 50, "Width": 1500, "Height": 1000 },
+      "lines": [
+        "Hide",
+        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-sandbox.sh blocked\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# one gate guards main — four pillars, defined per repo\"",
+        "Enter",
+        "Sleep 800ms",
+        "Type \"cat mergegate.config.json\"",
+        "Enter",
+        "Sleep 3.5s",
+        "Type \"# an autonomous agent just pushed a PR at main\"",
+        "Enter",
+        "Sleep 800ms",
+        "Type \"git log --oneline -1\"",
+        "Enter",
+        "Sleep 1.6s",
+        "Type \"mg check\"",
+        "Enter",
+        "Sleep 5s",
+        "Type \"# no spec, tests red -> BLOCKED. now the agent does it right...\"",
+        "Enter",
+        "Sleep 2.2s",
+        "Hide",
+        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-sandbox.sh green\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"git log --oneline -1\"",
+        "Enter",
+        "Sleep 1.5s",
+        "Type \"mg check ; echo exit=$? -- CI lets the merge through\"",
+        "Enter",
+        "Sleep 5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:gate", "text": "Four pillars, defined per repo — spec, build, tests, checks.", "from": 1.0, "to": 7.0 },
+    { "segment": "vhs:gate", "text": "Agent PR: missing spec + broken test → ✘ BLOCKED.", "from": 12.5, "to": 18.5 },
+    { "segment": "vhs:gate", "text": "Fixed properly, spec referenced → ✔ PASS, exit 0.", "from": 25.0, "to": 31.0 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:gate", "card:outro"]
+}

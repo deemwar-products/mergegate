@@ -1,0 +1,62 @@
+{
+  "name": "mergegate-enforce",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "A config is advice. A hook is a wall. mergegate installs the gate into git itself." },
+      { "at": "card:turn",   "text": "Block the push — not just the pull request. Right where the agent acts." },
+      { "at": "vhs:enforce", "text": "The gate lives in git's pre-push hook. An agent pushes its change straight at main — and the push is rejected on the spot, before it ever reaches the remote. The agent fixes it properly, references the spec, and the very same push lands clean." },
+      { "at": "card:outro",  "text": "mergegate. The line nothing crosses unproven. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "A config is advice. A hook is a wall.", "subtitle": "mergegate installs the gate into git itself", "style": "stakes", "duration": 7.8 },
+    { "id": "turn",   "title": "Block the push — not just the PR.", "subtitle": "mergegate install-hook · enforced where the agent acts", "style": "brand", "duration": 6.5 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "the line nothing crosses unproven", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "enforce",
+      "settings": { "FontSize": 26, "TypingSpeed": "33ms", "Padding": 50, "Width": 1500, "Height": 1000 },
+      "lines": [
+        "Hide",
+        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-sandbox.sh hook\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# install-hook put the gate inside git's pre-push\"",
+        "Enter",
+        "Sleep 800ms",
+        "Type \"sed -n '11,19p' .git/hooks/pre-push\"",
+        "Enter",
+        "Sleep 3.2s",
+        "Type \"# the agent pushes its PR straight at main\"",
+        "Enter",
+        "Sleep 1.2s",
+        "Type \"git push origin main\"",
+        "Enter",
+        "Sleep 5.5s",
+        "Type \"# rejected at the wall. fix it properly...\"",
+        "Enter",
+        "Sleep 1.5s",
+        "Type \"echo 'exports.retries = 3;' > retry.js\"",
+        "Enter",
+        "Sleep 700ms",
+        "Type \"git commit -aqm 'fix: restore retry policy (spec 14)'\"",
+        "Enter",
+        "Sleep 1.6s",
+        "Type \"git push origin main\"",
+        "Enter",
+        "Sleep 6s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:enforce", "text": "The gate lives in git's pre-push hook — local, before CI.", "from": 1.0, "to": 6.5 },
+    { "segment": "vhs:enforce", "text": "Agent pushes at main → gate runs → ✘ push REJECTED.", "from": 11.5, "to": 17.0 },
+    { "segment": "vhs:enforce", "text": "Fixed + spec referenced → gate green → push lands.", "from": 25.5, "to": 31.0 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:enforce", "card:outro"]
+}

@@ -1,0 +1,70 @@
+{
+  "name": "mergegate-governance",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "A human reviewer reads intent. An agent at three a.m. has no reviewer — so the gate is the reviewer." },
+      { "at": "card:turn",   "text": "One command wires it up. And agents don't get the same bar humans do." },
+      { "at": "vhs:gov",     "text": "mergegate init detects your stack and writes the config and the CI gate. Then watch: the same change, with a failing optional check. A human ships it. The very same change from an agent is blocked — because an autonomous agent must clear every gate." },
+      { "at": "card:outro",  "text": "mergegate. Per-repo governance for the age of agent PRs. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Agents don't get the benefit of the doubt.", "subtitle": "a human reads intent — at 3am, the gate IS the reviewer", "style": "stakes", "duration": 7.5 },
+    { "id": "turn",   "title": "One config. Two bars.", "subtitle": "mergegate init · humans lighter · agents clear every gate", "style": "brand", "duration": 7 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "per-repo governance for the age of agent PRs", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "gov",
+      "settings": { "FontSize": 26, "TypingSpeed": "33ms", "Padding": 50, "Width": 1500, "Height": 1000 },
+      "lines": [
+        "Hide",
+        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-sandbox.sh init\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# new repo? one command wires the gate\"",
+        "Enter",
+        "Sleep 800ms",
+        "Type \"mg init\"",
+        "Enter",
+        "Sleep 4s",
+        "Type \"ls .github/workflows\"",
+        "Enter",
+        "Sleep 1.8s",
+        "Type \"# now the governance: same change, two authors\"",
+        "Enter",
+        "Sleep 1.8s",
+        "Hide",
+        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-sandbox.sh governance\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"git log --oneline -1\"",
+        "Enter",
+        "Sleep 1.5s",
+        "Type \"# lint (optional) is red -- a human ships it\"",
+        "Enter",
+        "Sleep 1s",
+        "Type \"mg check --human\"",
+        "Enter",
+        "Sleep 4.5s",
+        "Type \"# ...but an autonomous agent must clear EVERY gate\"",
+        "Enter",
+        "Sleep 1.8s",
+        "Type \"mg check --agent\"",
+        "Enter",
+        "Sleep 4.8s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:gov", "text": "mergegate init — config + CI gate, stack auto-detected.", "from": 2.5, "to": 8.0 },
+    { "segment": "vhs:gov", "text": "Same change · human: optional lint waived → ✔ PASS.", "from": 16.5, "to": 21.5 },
+    { "segment": "vhs:gov", "text": "Same change · agent: every gate required → ✘ BLOCKED.", "from": 25.0, "to": 30.5 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:gov", "card:outro"]
+}
