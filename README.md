@@ -106,25 +106,30 @@ sensible `build` / `tests` / `checks` commands — review them, then you're gate
 | `policy.agent.requireAll` | Agent PRs must pass every gate (default `true`). |
 | `policy.human.requireAll` | Force the strict bar for humans too (default `false`). |
 
-## In CI (GitHub Actions)
+## In CI (GitHub Actions) — one line
 
-`mergegate init` drops `.github/workflows/mergegate.yml`:
+`mergegate init` drops `.github/workflows/mergegate.yml`. Adoption is a single `uses:` line —
+no YAML rule engine, no merge-queue migration:
 
 ```yaml
 on:
   pull_request:
     branches: [main]
+permissions:
+  contents: read
+  pull-requests: write   # so mergegate can post the verdict comment
 jobs:
   mergegate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: oven-sh/setup-bun@v2
-      - run: bunx mergegate gate --base origin/main --author "${{ github.event.pull_request.user.login }}"
+      - uses: deemwar/mergegate@v0   # auto-detects the agent author, holds it to every gate
 ```
 
-A red gate fails the required check → the PR can't merge. That's the productized promise.
+The Action runs the gate keyed on the PR author, **upserts the verdict as a PR comment**
+(`mergegate --format markdown`), and fails the required check when an agent PR isn't provably
+done — so it can't merge. That's the productized promise.
 
 ## Pre-push hook
 
@@ -146,7 +151,7 @@ Emergency bypass (human, deliberate): `MERGEGATE_SKIP=1 git push`.
 | `mergegate gate` | Same as `check`, tuned for CI. |
 | `mergegate init` | Scaffold config + GitHub Actions workflow. |
 | `mergegate install-hook` | Install the pre-push gate. |
-| `mergegate check --json` | Machine-readable verdict. |
+| `mergegate check --format json\|markdown` | Machine-readable / PR-comment verdict. |
 
 ## License
 
