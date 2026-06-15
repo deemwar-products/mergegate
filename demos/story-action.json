@@ -1,0 +1,61 @@
+{
+  "name": "mergegate-action",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "Adoption is the whole game. A rival gate takes a YAML afternoon. mergegate takes one line." },
+      { "at": "card:turn",   "text": "Add one line to your pull-request workflow, and every agent PR gets gated and commented automatically." },
+      { "at": "vhs:action",  "text": "One uses line. On an agent's pull request the action runs the gate, keyed on the author, and posts the verdict as a comment. Missing spec and a broken test — blocked. Fixed and referenced — clear to merge." },
+      { "at": "card:outro",  "text": "mergegate. One line in front of main. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Adoption is the whole game.", "subtitle": "a rival gate = a YAML afternoon · mergegate = one line", "style": "stakes", "duration": 8 },
+    { "id": "turn",   "title": "mergegate, in one line.", "subtitle": "uses: deemwar/mergegate@v0", "style": "brand", "duration": 7 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "one line in front of main", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "action",
+      "settings": { "FontSize": 24, "TypingSpeed": "33ms", "Padding": 50, "Width": 1560, "Height": 1020 },
+      "lines": [
+        "Hide",
+        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-action.sh blocked\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# add one line to your PR workflow\"",
+        "Enter",
+        "Sleep 800ms",
+        "Type \"cat .github/workflows/mergegate.yml\"",
+        "Enter",
+        "Sleep 3.8s",
+        "Type \"# every agent PR: the action gates it + comments the verdict\"",
+        "Enter",
+        "Sleep 1.6s",
+        "Type \"mgaction\"",
+        "Enter",
+        "Sleep 5.2s",
+        "Type \"# the agent fixes it properly...\"",
+        "Enter",
+        "Sleep 1.8s",
+        "Hide",
+        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-action.sh green\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"mgaction\"",
+        "Enter",
+        "Sleep 5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:action", "text": "One uses: line — no YAML afternoon, no migration.", "from": 2.0, "to": 6.8 },
+    { "segment": "vhs:action", "text": "Agent PR → the gate comments the verdict → ❌ BLOCKED.", "from": 12.0, "to": 17.5 },
+    { "segment": "vhs:action", "text": "Fixed + spec referenced → ✅ clear to merge.", "from": 20.5, "to": 23.6 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:action", "card:outro"]
+}
