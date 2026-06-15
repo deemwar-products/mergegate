@@ -29,8 +29,17 @@ demo `ceo/demos/mergegate-validate.mp4`.)*
 - **Call to CEO:** **PIVOT** to ship the wedge as an OSS funnel tool (the MVP is done);
   **DEFER** the scalable paid SaaS until 2–3 fleet-running teams commit to paying *unbundled*.
 
-## Next (gated on the M0 call)
-- **If CEO approves PIVOT:** stage the OSS publish (owner-gated) + reusable GitHub Action
-  (`deemwar/mergegate-action`, one `uses:` line); CTA → deemwar.com/contact.
-- **Only if WTP validated (paying design partners):** spec gate v2 (file→spec linkage),
+## Adoption layer — OSS-funnel build (2026-06-15, the PIVOT path) — ✅ DONE
+*(#2992 — M0 answer was PIVOT = GO on the OSS funnel; built the adoption lever, NOT the
+deferred paid SaaS.)*
+- `mergegate --format markdown` — a PR-comment-ready verdict (gate table + upsert marker).
+- **Reusable composite GitHub Action** (`action.yml` + `action/entrypoint.sh`): adopt in
+  one `uses: deemwar/mergegate@v0` line — runs the gate keyed on PR author, posts/upserts
+  the verdict comment, exits with the gate code. Beats "a YAML afternoon" (the validation's
+  named ergonomic edge over Mergify). 42 tests; self-dogfood workflow uses the local action.
+- Demo: `ceo/demos/mergegate-action.mp4`. Branch `feat/github-action`, publish owner-gated.
+
+## Next (still gated on WTP)
+- **Stage the OSS publish** (public repo + Action listing) — **owner-gated**, awaiting CEO.
+- **Only if WTP validated (2–3 paying design partners):** spec gate v2 (file→spec linkage),
   per-repo subscription + hosted gate-outcomes dashboard. **Do not build on a hypothesis.**
