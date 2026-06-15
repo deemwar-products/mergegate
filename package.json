@@ -1,0 +1,38 @@
+{
+  "name": "mergegate",
+  "version": "0.1.0",
+  "description": "Block any autonomous-agent PR from touching main until it provably passes spec + build + tests + checks.",
+  "type": "module",
+  "bin": {
+    "mergegate": "./bin/mergegate.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "build": "bun build ./src/cli.ts --target=node --outfile=bin/mergegate.mjs --banner '#!/usr/bin/env node'",
+    "check": "bun run src/cli.ts check"
+  },
+  "keywords": [
+    "ci",
+    "merge-gate",
+    "ai-agents",
+    "governance",
+    "pull-request",
+    "pre-push",
+    "branch-protection"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14",
+    "typescript": "^6.0.3"
+  }
+}
