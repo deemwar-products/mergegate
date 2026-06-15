@@ -1,0 +1,52 @@
+{
+  "name": "mergegate-validate",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "Before building the scalable version, we did the honest thing: tighten to a spec, then prove it — or defer." },
+      { "at": "card:pain",   "text": "The pain is real and measured. Seventeen million agent-authored pull requests, merging at thirty-three percent against eighty-four for humans." },
+      { "at": "vhs:spike",   "text": "The spike de-risks the hard part: the same change, gated only on who opened it. Human passes, agent is blocked — the one thing GitHub rulesets cannot express, because author is bypass-only." },
+      { "at": "card:occ",    "text": "But the space is half-taken. GitHub gates branches, not authors — yet Mergify and SonarQube are already circling the gap." },
+      { "at": "card:wtp",    "text": "And the buyers haven't shown up. The loudest pain is unpaid maintainers — and GitHub already gave them a free fix." },
+      { "at": "card:call",   "text": "So the honest call: pivot to the open wedge, ship it as OSS — and defer the paid product until someone proves they'll pay." },
+      { "at": "card:outro",  "text": "mergegate. Validate cheap. Build only what's proven. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "We validated before building.", "subtitle": "M0: tighten to a spec, then prove it — or defer", "style": "stakes", "duration": 8.3 },
+    { "id": "pain",   "title": "The pain is real.", "subtitle": "17M agent PRs · they merge 32.7% vs 84.4% human", "style": "brand", "duration": 10.5 },
+    { "id": "occ",    "title": "But the space is half-taken.", "subtitle": "GitHub gates branches, not authors — Mergify & Sonar circling", "style": "brand", "duration": 8.5 },
+    { "id": "wtp",    "title": "And the buyers haven't shown up.", "subtitle": "loudest pain = unpaid OSS — GitHub already shipped a free fix", "style": "brand", "duration": 8 },
+    { "id": "call",   "title": "The honest call: PIVOT + DEFER.", "subtitle": "ship the OSS wedge · don't build the paid SaaS on a hypothesis", "style": "stakes", "duration": 8.5 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "validate cheap · build only what's proven", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "spike",
+      "settings": { "FontSize": 26, "TypingSpeed": "33ms", "Padding": 50, "Width": 1500, "Height": 1000 },
+      "lines": [
+        "Hide",
+        "Type \"cd /Users/muthuishere/muthu/deemwarworkspace/products/mergegate\"",
+        "Enter",
+        "Sleep 500ms",
+        "Show",
+        "Type \"# the de-risk: can the gate key on WHO opened the PR?\"",
+        "Enter",
+        "Sleep 1s",
+        "Type \"# GitHub rulesets cannot -- author is bypass-only\"",
+        "Enter",
+        "Sleep 1.6s",
+        "Type \"bash spike/prove-wedge.sh\"",
+        "Enter",
+        "Sleep 7.5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:spike", "text": "The spike: one identical change, gated only on author.", "from": 0.5, "to": 6.5 },
+    { "segment": "vhs:spike", "text": "Human PASS · Agent BLOCK — the gap GitHub can't express.", "from": 9.0, "to": 14.0 }
+  ],
+  "timeline": ["card:stakes", "card:pain", "vhs:spike", "card:occ", "card:wtp", "card:call", "card:outro"]
+}
