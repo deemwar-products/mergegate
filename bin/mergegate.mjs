@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { createRequire } from "node:module";
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
@@ -261,6 +260,43 @@ function formatReport(v) {
 function formatJson(v) {
   return JSON.stringify(v, null, 2);
 }
+var MARKDOWN_MARKER = "<!-- mergegate -->";
+function mdIcon(g) {
+  if (g.status === "pass")
+    return "✅ pass";
+  if (g.status === "skipped")
+    return "➖ skipped";
+  return "❌ fail";
+}
+function formatMarkdown(v) {
+  const lines = [MARKDOWN_MARKER];
+  const classTag = `\`[${v.authorClass}]\``;
+  if (v.pass) {
+    lines.push(`## ✅ mergegate — clear to merge into \`${v.protectedBranch}\``);
+  } else {
+    lines.push(`## ❌ mergegate — BLOCKED from \`${v.protectedBranch}\``);
+    lines.push("");
+    lines.push(`**${v.blockedBy.length} required gate(s) not green:** ${v.blockedBy.map((n) => `\`${n}\``).join(", ")}`);
+  }
+  lines.push("");
+  lines.push(`**Author:** ${v.author} ${classTag}`);
+  lines.push("");
+  lines.push("| Gate | Status | Detail |");
+  lines.push("|---|---|---|");
+  for (const g of v.gates) {
+    const name = g.required ? g.name : `${g.name} _(optional)_`;
+    const detail = (g.reason || "").replace(/\n/g, " ").slice(0, 160);
+    lines.push(`| ${name} | ${mdIcon(g)} | ${detail} |`);
+  }
+  lines.push("");
+  if (!v.pass && v.authorClass === "agent") {
+    lines.push("> ⚠️ Agent-authored change → **all gates required**. Fix the above and re-run the gate.");
+  } else if (v.pass) {
+    lines.push("> Provably done — spec · build · tests · checks.");
+  }
+  return lines.join(`
+`);
+}
 
 // src/git.ts
 import { spawnSync as spawnSync2 } from "node:child_process";
@@ -342,6 +378,9 @@ var WORKFLOW = `name: mergegate
 on:
   pull_request:
     branches: [main]
+permissions:
+  contents: read
+  pull-requests: write # so mergegate can post the verdict as a PR comment
 jobs:
   mergegate:
     runs-on: ubuntu-latest
@@ -349,9 +388,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # mergegate needs branch history for the spec gate
-      - uses: oven-sh/setup-bun@v2
-      - name: Run the merge gate
-        run: bunx mergegate gate --base origin/main --author "\${{ github.event.pull_request.user.login }}"
+      # One line. Auto-detects the agent author and holds it to every gate.
+      - uses: deemwar/mergegate@v0
 `;
 function cmdInit(args) {
   const dirArg = args.find((a) => !a.startsWith("--"));
@@ -488,7 +526,8 @@ OPTIONS (check / gate)
   --base <ref>          Base ref to diff against (default: config protectedBranch).
   --author "<a>"        Override the change author ("Name <email>").
   --agent | --human     Force the author class instead of auto-detecting.
-  --json                Emit the verdict as JSON.
+  --format <fmt>        Output format: text (default) | json | markdown.
+  --json                Shorthand for --format json.
 
 Docs: https://github.com/deemwar/mergegate`;
 function buildContext(dir, flags, base) {
@@ -533,10 +572,17 @@ function runCheck(args) {
   const base = typeof flags.base === "string" ? flags.base : config.protectedBranch ?? "main";
   const ctx = buildContext(dir, flags, base);
   const verdict = evaluate(config, ctx);
-  if (flags.json) {
-    console.log(formatJson(verdict));
-  } else {
-    console.log(formatReport(verdict));
+  const format = flags.json ? "json" : typeof flags.format === "string" ? flags.format : "text";
+  switch (format) {
+    case "json":
+      console.log(formatJson(verdict));
+      break;
+    case "markdown":
+    case "md":
+      console.log(formatMarkdown(verdict));
+      break;
+    default:
+      console.log(formatReport(verdict));
   }
   return verdict.pass ? 0 : 1;
 }

@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { loadConfig, ConfigError } from "./config.ts";
 import { evaluate } from "./verdict.ts";
-import { formatReport, formatJson } from "./report.ts";
+import { formatReport, formatJson, formatMarkdown } from "./report.ts";
 import { isGitRepo, headAuthor, branchCommitMessages } from "./git.ts";
 import { cmdInit } from "./commands/init.ts";
 import { cmdInstallHook } from "./commands/hook.ts";
@@ -51,7 +51,8 @@ OPTIONS (check / gate)
   --base <ref>          Base ref to diff against (default: config protectedBranch).
   --author "<a>"        Override the change author ("Name <email>").
   --agent | --human     Force the author class instead of auto-detecting.
-  --json                Emit the verdict as JSON.
+  --format <fmt>        Output format: text (default) | json | markdown.
+  --json                Shorthand for --format json.
 
 Docs: https://github.com/deemwar/mergegate`;
 
@@ -97,10 +98,17 @@ function runCheck(args: string[]): number {
   const ctx = buildContext(dir, flags, base);
   const verdict = evaluate(config, ctx);
 
-  if (flags.json) {
-    console.log(formatJson(verdict));
-  } else {
-    console.log(formatReport(verdict));
+  const format = flags.json ? "json" : typeof flags.format === "string" ? flags.format : "text";
+  switch (format) {
+    case "json":
+      console.log(formatJson(verdict));
+      break;
+    case "markdown":
+    case "md":
+      console.log(formatMarkdown(verdict));
+      break;
+    default:
+      console.log(formatReport(verdict));
   }
   return verdict.pass ? 0 : 1;
 }

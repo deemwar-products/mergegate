@@ -51,3 +51,42 @@ export function formatReport(v: Verdict): string {
 export function formatJson(v: Verdict): string {
   return JSON.stringify(v, null, 2);
 }
+
+/** A hidden marker so a CI bot can find + upsert its own comment instead of spamming. */
+export const MARKDOWN_MARKER = "<!-- mergegate -->";
+
+function mdIcon(g: GateResult): string {
+  if (g.status === "pass") return "✅ pass";
+  if (g.status === "skipped") return "➖ skipped";
+  return "❌ fail";
+}
+
+/** A PR-comment-ready verdict (the GitHub-check surface). */
+export function formatMarkdown(v: Verdict): string {
+  const lines: string[] = [MARKDOWN_MARKER];
+  const classTag = `\`[${v.authorClass}]\``;
+  if (v.pass) {
+    lines.push(`## ✅ mergegate — clear to merge into \`${v.protectedBranch}\``);
+  } else {
+    lines.push(`## ❌ mergegate — BLOCKED from \`${v.protectedBranch}\``);
+    lines.push("");
+    lines.push(`**${v.blockedBy.length} required gate(s) not green:** ${v.blockedBy.map((n) => `\`${n}\``).join(", ")}`);
+  }
+  lines.push("");
+  lines.push(`**Author:** ${v.author} ${classTag}`);
+  lines.push("");
+  lines.push("| Gate | Status | Detail |");
+  lines.push("|---|---|---|");
+  for (const g of v.gates) {
+    const name = g.required ? g.name : `${g.name} _(optional)_`;
+    const detail = (g.reason || "").replace(/\n/g, " ").slice(0, 160);
+    lines.push(`| ${name} | ${mdIcon(g)} | ${detail} |`);
+  }
+  lines.push("");
+  if (!v.pass && v.authorClass === "agent") {
+    lines.push("> ⚠️ Agent-authored change → **all gates required**. Fix the above and re-run the gate.");
+  } else if (v.pass) {
+    lines.push("> Provably done — spec · build · tests · checks.");
+  }
+  return lines.join("\n");
+}
