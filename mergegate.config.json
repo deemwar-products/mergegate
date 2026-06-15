@@ -1,0 +1,32 @@
+{
+  "$schema": "https://github.com/deemwar/mergegate/schema.json",
+  "version": 1,
+  "protectedBranch": "main",
+  "gates": {
+    "spec": {
+      "description": "Every commit must reference a spec or issue (proof the work was specified).",
+      "builtin": "spec",
+      "required": true
+    },
+    "build": {
+      "description": "The CLI bundles cleanly.",
+      "run": "bun build ./src/cli.ts --target=node --outfile=/tmp/mergegate-build-check.mjs",
+      "required": true
+    },
+    "tests": {
+      "description": "The full test suite passes.",
+      "run": "bun test",
+      "required": true
+    },
+    "checks": {
+      "description": "Types check.",
+      "run": "bunx tsc --noEmit",
+      "required": false
+    }
+  },
+  "policy": {
+    "_comment": "Agent-authored changes must pass EVERY gate. Human changes honor each gate's `required`.",
+    "agent": { "requireAll": true },
+    "human": { "requireAll": false }
+  }
+}
