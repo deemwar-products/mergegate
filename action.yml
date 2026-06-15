@@ -1,0 +1,35 @@
+name: "mergegate"
+description: "Block agent-authored PRs from merging into main until they pass spec + build + tests + checks."
+branding:
+  icon: "git-merge"
+  color: "green"
+inputs:
+  base:
+    description: "Base ref to diff against (the spec gate needs branch history)."
+    required: false
+    default: "origin/main"
+  author:
+    description: "PR author to classify (agent vs human). Defaults to the PR opener's login."
+    required: false
+    default: ${{ github.event.pull_request.user.login }}
+  comment:
+    description: "Upsert the verdict as a PR comment (needs pull-requests: write)."
+    required: false
+    default: "true"
+  github-token:
+    description: "Token used to post the PR comment."
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: "composite"
+  steps:
+    - name: Run the merge gate
+      shell: bash
+      env:
+        MG_BIN: ${{ github.action_path }}/bin/mergegate.mjs
+        MG_BASE: ${{ inputs.base }}
+        MG_AUTHOR: ${{ inputs.author }}
+        MG_COMMENT: ${{ inputs.comment }}
+        MG_PR: ${{ github.event.pull_request.number }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: bash "${{ github.action_path }}/action/entrypoint.sh"

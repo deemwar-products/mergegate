@@ -56,6 +56,9 @@ const WORKFLOW = `name: mergegate
 on:
   pull_request:
     branches: [main]
+permissions:
+  contents: read
+  pull-requests: write # so mergegate can post the verdict as a PR comment
 jobs:
   mergegate:
     runs-on: ubuntu-latest
@@ -63,9 +66,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # mergegate needs branch history for the spec gate
-      - uses: oven-sh/setup-bun@v2
-      - name: Run the merge gate
-        run: bunx mergegate gate --base origin/main --author "\${{ github.event.pull_request.user.login }}"
+      # One line. Auto-detects the agent author and holds it to every gate.
+      - uses: deemwar/mergegate@v0
 `;
 
 export function cmdInit(args: string[]): number {

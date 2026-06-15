@@ -1,0 +1,23 @@
+name: mergegate
+# Dogfood: mergegate gates its own PRs using the local composite action.
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  mergegate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build the CLI the action runs
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          ~/.bun/bin/bun install --frozen-lockfile
+          ~/.bun/bin/bun build ./src/cli.ts --target=node --outfile=bin/mergegate.mjs
+      - uses: ./
+        with:
+          base: origin/main
