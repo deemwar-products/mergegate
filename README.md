@@ -1,17 +1,27 @@
 # mergegate
 
-**Block any autonomous-agent PR from touching `main` until it provably passes spec + build + tests + checks.**
+**GitHub gates on branches, not on _who_ opened the PR. mergegate gates on the author —
+and holds autonomous-agent PRs to a provably-done bar (spec + build + tests + checks)
+before they touch `main`.**
 
 Agents open pull requests now. A lot of them. The good ones are green; the rest are
-plausible-looking diffs that don't build, skip the tests, or were never specified.
-Branch protection asks *"did a check run?"* — `mergegate` asks the question that
-actually matters:
+plausible-looking diffs that don't build, skip the tests, or were never specified — and
+nobody's reviewing them at 3am.
 
-> **Is this change provably done — spec, build, tests, checks — and is it from an agent that has to prove it?**
+Here's the gap. GitHub branch protection and rulesets let you require checks on a
+*branch*. They **cannot condition on the PR author** — author is bypass-only, never a
+trigger ([verified in the ruleset
+docs](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)).
+So you can't say *"if an agent opened this PR, require **every** gate"* — the one rule
+that matters when most of your PR volume is unattended.
 
-mergegate is one small, zero-dependency gate you drop in front of `main`. It runs your
-four pillars, classifies *who* authored the change, and holds agent PRs to a stricter
-bar than humans — because an unattended agent doesn't get the benefit of the doubt.
+That's the sentence mergegate exists to express:
+
+> **If an agent opened this PR, it must be provably done — spec, build, tests, checks — before it merges. Humans keep a lighter, configurable bar.**
+
+mergegate is one small, zero-dependency gate you drop in front of `main`. It classifies
+*who* authored the change, runs your four pillars, and holds agent PRs to a stricter bar
+than humans — because an unattended agent doesn't get the benefit of the doubt.
 
 ```
 ✘ BLOCKED — 2 required gate(s) not green: spec, tests
@@ -22,6 +32,10 @@ bar than humans — because an unattended agent doesn't get the benefit of the d
 
 ## Why
 
+- **GitHub can't gate on the author; mergegate can.** Rulesets condition on the branch,
+  the file paths, the checks — never on *who* opened the PR. mergegate keys the policy
+  on the author identity, so "agent-authored ⇒ every gate required" becomes an
+  enforceable rule, not a wish.
 - **Branch protection counts checks; it doesn't judge done-ness.** A passing lint job
   next to a missing spec and a skipped test suite still merges.
 - **Agent PRs need a higher bar.** A human reviewer reads intent. An agent at 3am has
@@ -153,6 +167,14 @@ Emergency bypass (human, deliberate): `MERGEGATE_SKIP=1 git push`.
 | `mergegate install-hook` | Install the pre-push gate. |
 | `mergegate check --format json\|markdown` | Machine-readable / PR-comment verdict. |
 
+## Running an agent fleet?
+
+mergegate is the gate we run over our own fleet of autonomous agents, opened up as OSS.
+If your team is drowning in agent-authored PRs — or you'd want this as a hosted,
+per-repo gate with a dashboard of gate outcomes — tell us what you'd need:
+
+> **[deemwar.com/contact](https://deemwar.com/contact)** — design-partner / "I'd pay for this unbundled".
+
 ## License
 
-MIT © deemwar — questions / design-partner: **deemwar.com/contact**
+MIT © deemwar — questions / design-partner: **[deemwar.com/contact](https://deemwar.com/contact)**
