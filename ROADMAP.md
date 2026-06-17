@@ -9,10 +9,20 @@ Merge-gate-as-a-service: block any autonomous-agent PR from touching main until 
      classification (agent vs human), policy-aware verdict, terminal + JSON report.
    - 32 tests green. Dogfoods itself (customer-zero): `mergegate.config.json` gates this repo.
    - Three story demos in house style (`ceo/demos/mergegate-{gate,governance,enforce}.mp4`).
-2. Demo (auto-demo house style) + (OSS) Show-HN/X draft OR (SaaS) landing + 1 design-partner.
-   - Demos: ✅ produced (staged for CEO verify). Launch copy + Show-HN/landing: pending.
+2. Demo (auto-demo house style) + (OSS) Show-HN/X draft OR (SaaS) landing + 1 design-partner. — ✅ DONE (2026-06-17)
+   - Demos: ✅ produced (staged for CEO verify). Launch copy: ✅ `ceo/launch/mergegate-launch.md`
+     (repo + video + Show HN title/body/first-comment + X thread + order-of-ops) — **publish owner-gated**.
 3. Stage for Muthu (publish/deploy/launch owner-gated); CTA -> deemwar.com/contact.
-   - Branch `feat/mvp-merge-gate` ready; no public repo/remote yet — **publish owner-gated**.
+   - Branch `feat/github-action` ready; no public repo/remote yet — **publish owner-gated**.
+
+## Hardening pass (2026-06-17, #59 — demo-verified gate)
+- **Bug fixed:** committed `bin/mergegate.mjs` was missing its `#!/usr/bin/env node` shebang
+  — the `bin` entry would fail to execute via `npx`/`bunx`. Root cause: `tests/action.test.ts`
+  rebuilt the bundle *without* `--banner`, silently clobbering the shebang. Test build now
+  matches `npm run build`; added a regression test asserting the shebang.
+- **Flake fixed:** the shell-spawning entrypoint integration tests (git init + npm + node)
+  now carry a 20s per-test timeout (were tripping the 5s default under parallel load).
+- 43 tests green; dogfoods itself (human PASS, agent classified `[agent]`, markdown verdict).
 
 ## M0 — SPEC + VALIDATE + SPIKE (2026-06-15) → recommendation: **PIVOT + DEFER**
 *(Muthu: tighten + validate BEFORE any long/scalable build. Did it. See

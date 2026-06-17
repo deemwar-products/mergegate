@@ -43,8 +43,18 @@ function runEntrypoint(dir: string, env: Record<string, string>) {
 
 describe("action entrypoint", () => {
   beforeAll(() => {
-    // The bundled binary must exist; build it if missing.
-    spawnSync("bun", ["build", "./src/cli.ts", "--target=node", `--outfile=${BIN}`], { cwd: ROOT });
+    // The bundled binary must exist; build it the SAME way `npm run build` does —
+    // with the shebang banner — so the test never clobbers the committed bin.
+    spawnSync(
+      "bun",
+      ["build", "./src/cli.ts", "--target=node", `--outfile=${BIN}`, "--banner", "#!/usr/bin/env node"],
+      { cwd: ROOT },
+    );
+  });
+
+  test("bundled bin keeps its shebang (it's the package `bin` entry)", () => {
+    const first = spawnSync("head", ["-1", BIN], { encoding: "utf8" }).stdout.trim();
+    expect(first).toBe("#!/usr/bin/env node");
   });
 
   test("agent PR with a red optional check → exit 1 (BLOCKED) and writes verdict", () => {
@@ -55,7 +65,7 @@ describe("action entrypoint", () => {
     const md = spawnSync("cat", [out], { encoding: "utf8" }).stdout;
     expect(md).toContain("<!-- mergegate -->");
     rmSync(dir, { recursive: true, force: true });
-  });
+  }, 20000);
 
   test("same change as a human → exit 0 (optional check waived)", () => {
     const dir = sandbox({ name: "Muthu", email: "m@example.com" }, 1, "feat (spec 1)");
@@ -63,12 +73,12 @@ describe("action entrypoint", () => {
     expect(res.status).toBe(0);
     expect(res.stdout).toContain("clear to merge");
     rmSync(dir, { recursive: true, force: true });
-  });
+  }, 20000);
 
   test("forced agent author input overrides detection", () => {
     const dir = sandbox({ name: "Muthu", email: "m@example.com" }, 1, "feat (spec 1)");
     const { res } = runEntrypoint(dir, { MG_AUTHOR: "copilot-swe-agent <bot@x>" });
     expect(res.status).toBe(1);
     rmSync(dir, { recursive: true, force: true });
-  });
+  }, 20000);
 });
