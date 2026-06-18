@@ -1,6 +1,6 @@
 import { test, expect, describe, beforeAll } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -79,6 +79,33 @@ describe("action entrypoint", () => {
     const dir = sandbox({ name: "Jordan Lee", email: "jordan@example.com" }, 1, "feat (spec 1)");
     const { res } = runEntrypoint(dir, { MG_AUTHOR: "copilot-swe-agent <bot@x>" });
     expect(res.status).toBe(1);
+    rmSync(dir, { recursive: true, force: true });
+  }, 20000);
+
+  test("config error (empty verdict) does NOT post a PR comment", () => {
+    // No mergegate.config.json → the gate exits 2 with nothing on stdout (the error
+    // goes to stderr), so MG_OUT is empty. The comment upsert must be skipped, or a
+    // public PR gets an empty "mergegate" comment that looks broken.
+    const dir = mkdtempSync(join(tmpdir(), "mg-action-cfg-"));
+    spawnSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
+    // Stub `gh` on PATH that records every invocation — if it's ever called, the guard failed.
+    const bindir = join(dir, "bin");
+    mkdirSync(bindir);
+    const ghLog = join(dir, "gh-calls.log");
+    writeFileSync(join(bindir, "gh"), `#!/usr/bin/env bash\necho "$@" >> "${ghLog}"\n`, { mode: 0o755 });
+    const out = join(dir, "verdict.md");
+    const res = spawnSync("bash", [ENTRY], {
+      cwd: dir,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${bindir}:${process.env.PATH}`,
+        MG_BIN: BIN, MG_BASE: "main", MG_OUT: out,
+        MG_COMMENT: "true", GH_TOKEN: "x", MG_PR: "1", GITHUB_REPOSITORY: "o/r",
+      },
+    });
+    expect(res.status).toBe(2);
+    expect(existsSync(ghLog)).toBe(false); // gh never invoked → no comment attempted
     rmSync(dir, { recursive: true, force: true });
   }, 20000);
 });

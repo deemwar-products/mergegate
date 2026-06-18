@@ -27,7 +27,9 @@ code=$?
 cat "$OUT"
 
 # Upsert a single PR comment (find our marker, PATCH it; else POST a new one).
-if [ "$COMMENT" = "true" ] && command -v gh >/dev/null 2>&1 && [ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]; then
+# Skip when the verdict is empty (e.g. a config error wrote only to stderr) — an
+# empty mergegate comment on a public PR reads as broken.
+if [ "$COMMENT" = "true" ] && [ -s "$OUT" ] && command -v gh >/dev/null 2>&1 && [ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]; then
   pr="${MG_PR:-${PR_NUMBER:-}}"
   repo="${GITHUB_REPOSITORY:-}"
   if [ -n "$pr" ] && [ -n "$repo" ]; then

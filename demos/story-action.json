@@ -8,13 +8,13 @@
       { "at": "card:stakes", "text": "Adoption is the whole game. A rival gate takes a YAML afternoon. mergegate takes one line." },
       { "at": "card:turn",   "text": "Add one line to your pull-request workflow, and every agent PR gets gated and commented automatically." },
       { "at": "vhs:action",  "text": "One uses line. On an agent's pull request the action runs the gate, keyed on the author, and posts the verdict as a comment. Missing spec and a broken test — blocked. Fixed and referenced — clear to merge." },
-      { "at": "card:outro",  "text": "mergegate. One line in front of main. From deemwar." }
+      { "at": "card:outro",  "text": "mergegate. One line in front of main. From deemwar — find us at deemwar dot com slash contact." }
     ]
   },
   "cards": [
     { "id": "stakes", "title": "Adoption is the whole game.", "subtitle": "a rival gate = a YAML afternoon · mergegate = one line", "style": "stakes", "duration": 8 },
     { "id": "turn",   "title": "mergegate, in one line.", "subtitle": "uses: deemwar/mergegate@v0", "style": "brand", "duration": 7 },
-    { "id": "outro",  "title": "deemwar.", "subtitle": "one line in front of main", "style": "close", "duration": 6.5 }
+    { "id": "outro",  "title": "deemwar.", "subtitle": "deemwar.com/contact", "style": "close", "duration": 8 }
   ],
   "vhs": [
     {
