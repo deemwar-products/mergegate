@@ -37,3 +37,19 @@ export function branchCommitMessages(cwd: string, base: string): string[] {
 export function currentBranch(cwd: string): string | null {
   return git(["rev-parse", "--abbrev-ref", "HEAD"], cwd);
 }
+
+/** Unique "<name> <email>" authors of the last `n` commits, most-recent first.
+ *  Powers `mergegate agents check` — auditing who has authored here against the registry. */
+export function recentAuthors(cwd: string, n: number): string[] {
+  const out = git(["log", `-${n}`, "--pretty=%an <%ae>"], cwd);
+  if (!out) return [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const line of out.split("\n")) {
+    if (line && !seen.has(line)) {
+      seen.add(line);
+      result.push(line);
+    }
+  }
+  return result;
+}

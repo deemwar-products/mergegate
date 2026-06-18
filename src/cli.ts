@@ -5,6 +5,7 @@ import { formatReport, formatJson, formatMarkdown } from "./report.ts";
 import { isGitRepo, headAuthor, branchCommitMessages } from "./git.ts";
 import { cmdInit } from "./commands/init.ts";
 import { cmdInstallHook } from "./commands/hook.ts";
+import { cmdAgents } from "./commands/agents.ts";
 import type { AuthorClass, EvalContext } from "./types.ts";
 
 const VERSION = "0.1.0";
@@ -43,6 +44,9 @@ COMMANDS
   init                  Scaffold mergegate.config.json + a GitHub Actions workflow.
   install-hook          Install a git pre-push hook that blocks pushing the protected branch
                         unless the gate is green.
+  agents                List the coding agents mergegate detects out of the box.
+                        \`--author "<name> <email>"\` probes one author; \`agents check\` audits
+                        your repo's recent authors (proves the gate won't block a human); --json.
   version               Print version.
   help                  Show this help.
 
@@ -123,6 +127,8 @@ export function main(argv: string[]): number {
       return cmdInit(rest);
     case "install-hook":
       return cmdInstallHook(rest);
+    case "agents":
+      return cmdAgents(rest);
     case "version":
     case "--version":
     case "-v":

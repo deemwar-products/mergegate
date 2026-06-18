@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
 // src/cli.ts
-import { resolve as resolve3 } from "node:path";
+import { resolve as resolve4 } from "node:path";
 
 // src/config.ts
 import { readFileSync, existsSync } from "node:fs";
@@ -108,6 +108,15 @@ var AGENTS = [
   }
 ];
 var DEFAULT_AGENT_AUTHORS = AGENTS.flatMap((a) => a.match);
+function explainMatch(author) {
+  for (const a of AGENTS) {
+    for (const p of a.match) {
+      if (classifyAuthor(author, [p]) === "agent")
+        return { entry: a, pattern: p };
+    }
+  }
+  return null;
+}
 
 // src/config.ts
 var CONFIG_FILENAMES = ["mergegate.config.json", ".mergegate.json"];
@@ -398,6 +407,21 @@ function branchCommitMessages(cwd, base) {
   const last = git(["log", "-1", "--pretty=%s"], cwd);
   return last ? [last] : [];
 }
+function recentAuthors(cwd, n) {
+  const out = git(["log", `-${n}`, "--pretty=%an <%ae>"], cwd);
+  if (!out)
+    return [];
+  const seen = new Set;
+  const result = [];
+  for (const line of out.split(`
+`)) {
+    if (line && !seen.has(line)) {
+      seen.add(line);
+      result.push(line);
+    }
+  }
+  return result;
+}
 
 // src/commands/init.ts
 import { writeFileSync, existsSync as existsSync2, mkdirSync, readFileSync as readFileSync2 } from "node:fs";
@@ -556,9 +580,112 @@ function cmdInstallHook(args) {
   return 0;
 }
 
+// src/commands/agents.ts
+import { resolve as resolve3 } from "node:path";
+function parseFlags(args) {
+  const _ = [];
+  const flags = {};
+  for (let i = 0;i < args.length; i++) {
+    const a = args[i];
+    if (a.startsWith("--")) {
+      const key = a.slice(2);
+      const next = args[i + 1];
+      if (next !== undefined && !next.startsWith("--")) {
+        flags[key] = next;
+        i++;
+      } else {
+        flags[key] = true;
+      }
+    } else {
+      _.push(a);
+    }
+  }
+  return { _, flags };
+}
+var useColorDefault = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+var paint = (on, code, s) => on ? `\x1B[${code}m${s}\x1B[0m` : s;
+var dim2 = (on, s) => paint(on, "2", s);
+var yellow2 = (on, s) => paint(on, "33", s);
+var green2 = (on, s) => paint(on, "32", s);
+function probeAuthor(author) {
+  const hit = explainMatch(author);
+  if (hit)
+    return { cls: "agent", entry: hit.entry, pattern: hit.pattern };
+  return { cls: "human", entry: null, pattern: null };
+}
+function formatAgentsList(useColor2) {
+  const idW = Math.max(2, ...AGENTS.map((a) => a.id.length));
+  const labelW = Math.max(5, ...AGENTS.map((a) => a.label.length));
+  const lines = [];
+  lines.push(`mergegate · ${AGENTS.length} known coding agents detected out of the box`);
+  lines.push("");
+  lines.push(dim2(useColor2, `  ${"ID".padEnd(idW)}  ${"LABEL".padEnd(labelW)}  PATTERNS`));
+  for (const a of AGENTS) {
+    lines.push(`  ${a.id.padEnd(idW)}  ${a.label.padEnd(labelW)}  ${dim2(useColor2, a.match.join(", "))}`);
+  }
+  lines.push("");
+  lines.push(dim2(useColor2, "  Add yours (one entry, anchored to a [bot] login or noreply domain):"));
+  lines.push(dim2(useColor2, "  https://github.com/deemwar/mergegate  → edit src/agents.ts"));
+  return lines.join(`
+`);
+}
+function formatProbe(author, useColor2) {
+  const { cls, entry, pattern } = probeAuthor(author);
+  if (cls === "agent") {
+    return `${yellow2(useColor2, "agent")}  ✔ ${entry.label} (${entry.id}) — matched ${dim2(useColor2, `/${pattern}/`)}`;
+  }
+  return `${green2(useColor2, "human")}  — no known agent matched ${dim2(useColor2, `"${author}"`)}`;
+}
+function runCheck(flags, useColor2) {
+  const dir = resolve3(typeof flags.dir === "string" ? flags.dir : ".");
+  const limit = typeof flags.limit === "string" ? Math.max(1, parseInt(flags.limit, 10) || 20) : 20;
+  if (!isGitRepo(dir)) {
+    console.error(`mergegate: ${dir} is not a git repo — \`agents check\` audits commit authors.`);
+    return 2;
+  }
+  const authors = recentAuthors(dir, limit);
+  const probed = authors.map((a) => ({ author: a, ...probeAuthor(a) }));
+  if (flags.json) {
+    console.log(JSON.stringify(probed.map((p) => ({ author: p.author, cls: p.cls, agent: p.entry })), null, 2));
+    return 0;
+  }
+  const agents = probed.filter((p) => p.cls === "agent");
+  console.log(`mergegate · audited ${authors.length} recent author(s) in ${dir}
+`);
+  for (const p of probed) {
+    const tag = p.cls === "agent" ? yellow2(useColor2, "agent") : green2(useColor2, "human");
+    const why = p.entry ? dim2(useColor2, `  → ${p.entry.id} /${p.pattern}/`) : "";
+    console.log(`  ${tag}  ${p.author}${why}`);
+  }
+  console.log(`
+${agents.length} of ${authors.length} would be gated as agents. ` + dim2(useColor2, "Named like an agent but listed human? Your contributors are safe."));
+  return 0;
+}
+function cmdAgents(args) {
+  const { _, flags } = parseFlags(args);
+  const useColor2 = useColorDefault();
+  if (_[0] === "check")
+    return runCheck(flags, useColor2);
+  if (typeof flags.author === "string") {
+    const { cls, entry } = probeAuthor(flags.author);
+    if (flags.json) {
+      console.log(JSON.stringify({ author: flags.author, cls, agent: entry }, null, 2));
+    } else {
+      console.log(formatProbe(flags.author, useColor2));
+    }
+    return 0;
+  }
+  if (flags.json) {
+    console.log(JSON.stringify(AGENTS, null, 2));
+    return 0;
+  }
+  console.log(formatAgentsList(useColor2));
+  return 0;
+}
+
 // src/cli.ts
 var VERSION = "0.1.0";
-function parseFlags(args) {
+function parseFlags2(args) {
   const _ = [];
   const flags = {};
   for (let i = 0;i < args.length; i++) {
@@ -591,6 +718,9 @@ COMMANDS
   init                  Scaffold mergegate.config.json + a GitHub Actions workflow.
   install-hook          Install a git pre-push hook that blocks pushing the protected branch
                         unless the gate is green.
+  agents                List the coding agents mergegate detects out of the box.
+                        \`--author "<name> <email>"\` probes one author; \`agents check\` audits
+                        your repo's recent authors (proves the gate won't block a human); --json.
   version               Print version.
   help                  Show this help.
 
@@ -625,9 +755,9 @@ function buildContext(dir, flags, base) {
     forceClass = "human";
   return { cwd: dir, author, commitMessages, forceClass };
 }
-function runCheck(args) {
-  const { flags } = parseFlags(args);
-  const dir = resolve3(typeof flags.dir === "string" ? flags.dir : ".");
+function runCheck2(args) {
+  const { flags } = parseFlags2(args);
+  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
   let config;
   try {
     config = loadConfig(dir);
@@ -664,11 +794,13 @@ function main(argv) {
   switch (cmd) {
     case "check":
     case "gate":
-      return runCheck(rest);
+      return runCheck2(rest);
     case "init":
       return cmdInit(rest);
     case "install-hook":
       return cmdInstallHook(rest);
+    case "agents":
+      return cmdAgents(rest);
     case "version":
     case "--version":
     case "-v":
