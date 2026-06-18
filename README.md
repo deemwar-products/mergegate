@@ -165,7 +165,46 @@ Emergency bypass (human, deliberate): `MERGEGATE_SKIP=1 git push`.
 | `mergegate gate` | Same as `check`, tuned for CI. |
 | `mergegate init` | Scaffold config + GitHub Actions workflow. |
 | `mergegate install-hook` | Install the pre-push gate. |
+| `mergegate agents` | List the coding agents mergegate detects out of the box. |
+| `mergegate agents --author "<name> <email>"` | Probe one author — agent/human + which pattern fired. |
+| `mergegate agents check` | Audit a repo's recent commit authors — proves the gate won't block a human. |
 | `mergegate check --format json\|markdown` | Machine-readable / PR-comment verdict. |
+
+## Known agents
+
+mergegate ships a curated registry of coding-agent identities (`src/agents.ts`), so
+human-vs-agent classification works out of the box — Copilot, Cursor, Devin, Claude Code,
+Codex, Dependabot, Renovate, Jules, Sweep, Aider, and the generic `[bot]` accounts.
+
+```
+$ mergegate agents
+mergegate · 13 known coding agents detected out of the box
+  copilot-swe-agent  GitHub Copilot coding agent  copilot-swe-agent, copilot\[bot\]
+  ...
+```
+
+**The gate's job is to stop agents without ever blocking a human.** Every pattern is
+anchored to an identity a human can't accidentally own — a GitHub App `[bot]` login or a
+vendor noreply domain — *never* a bare first name. So a contributor named **Devin** or
+**Claude** stays human:
+
+```
+$ mergegate agents --author "Devin Carter <devin.carter@gmail.com>"
+human  — no known agent matched "Devin Carter <devin.carter@gmail.com>"
+```
+
+Before you turn the gate on, audit your own repo's history to confirm none of your people
+get misclassified:
+
+```
+$ mergegate agents check
+  human  Devin Carter <devin.carter@gmail.com>
+  agent  copilot-swe-agent <bot@users.noreply.github.com>  → copilot-swe-agent /copilot-swe-agent/
+```
+
+**Missing an agent?** Add one entry to `src/agents.ts` (anchored to a `[bot]` login or
+noreply domain — see the safety rule at the top of the file) and open a PR. The registry
+is community-maintained; new agents ship every month.
 
 ## Running an agent fleet?
 
