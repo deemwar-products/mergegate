@@ -1,0 +1,63 @@
+{
+  "name": "mergegate-agents",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "A merge gate that blocks autonomous agents is only safe if it never blocks a human. So who counts as an agent?" },
+      { "at": "card:turn",   "text": "mergegate ships a curated registry of known coding agents — and gives you a command to prove it won't misclassify your team." },
+      { "at": "vhs:agents",  "text": "mergegate knows thirteen coding agents out of the box. A teammate named Devin? Still human — every pattern is anchored to a bot login or a noreply domain, never a bare name. A real Copilot agent is flagged. And agents check audits your repo's history before you ever turn the gate on." },
+      { "at": "card:outro",  "text": "mergegate. Gate the agents, not your humans. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Gate the agents — not your humans.", "subtitle": "a gate that blocks a human contributor is worse than no gate", "style": "stakes", "duration": 8 },
+    { "id": "turn",   "title": "A registry you can audit.", "subtitle": "mergegate agents · --author · check", "style": "brand", "duration": 7 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "gate the agents, not your humans", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "agents",
+      "settings": { "FontSize": 24, "TypingSpeed": "33ms", "Padding": 50, "Width": 1560, "Height": 1020 },
+      "lines": [
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-agents.sh\"",
+        "Enter",
+        "Sleep 1.5s",
+        "Show",
+        "Type \"# the coding agents mergegate detects out of the box\"",
+        "Enter",
+        "Sleep 700ms",
+        "Type \"mg agents\"",
+        "Enter",
+        "Sleep 4.2s",
+        "Type \"# a teammate named Devin — does the gate block him?\"",
+        "Enter",
+        "Sleep 1.4s",
+        "Type \"mg agents --author 'Devin Carter <devin.carter@gmail.com>'\"",
+        "Enter",
+        "Sleep 3s",
+        "Type \"# no — anchored patterns. now a real agent:\"",
+        "Enter",
+        "Sleep 1.2s",
+        "Type \"mg agents --author 'copilot-swe-agent <bot@users.noreply.github.com>'\"",
+        "Enter",
+        "Sleep 3s",
+        "Type \"# audit your repo BEFORE you turn the gate on:\"",
+        "Enter",
+        "Sleep 1.2s",
+        "Type \"mg agents check\"",
+        "Enter",
+        "Sleep 4.5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:agents", "text": "13 coding agents detected out of the box.", "from": 2.0, "to": 6.0 },
+    { "segment": "vhs:agents", "text": "A human named Devin → stays human. No false positive.", "from": 9.0, "to": 13.5 },
+    { "segment": "vhs:agents", "text": "A real Copilot agent → flagged, with the matched pattern.", "from": 15.5, "to": 19.0 },
+    { "segment": "vhs:agents", "text": "agents check — audit your repo before you turn the gate on.", "from": 21.5, "to": 26.0 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:agents", "card:outro"]
+}
