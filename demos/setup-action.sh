@@ -5,7 +5,9 @@
 # (exactly what gets posted as the PR comment), and cd's into the sandbox.
 set -uo pipefail
 
-REPO="/Users/muthuishere/muthu/deemwarworkspace/products/mergegate"
+# Resolve the repo root from this script's own location so the demo is portable
+# (works for anyone who clones); override with REPO if needed.
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
 MERGEGATE_BIN="$REPO/bin/mergegate.mjs"
 ENTRY="$REPO/action/entrypoint.sh"
 SB="/tmp/mergegate-action-demo"

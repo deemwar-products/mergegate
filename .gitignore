@@ -4,4 +4,7 @@ dist/
 .DS_Store
 artifacts/
 .mergegate-cache/
-ceo/demos/*.mp4
+
+# Internal working material — kept on disk locally, excluded from the published repo.
+ceo/
+ROADMAP.md

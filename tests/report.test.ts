@@ -18,7 +18,7 @@ const blocked: Verdict = {
 const passed: Verdict = {
   pass: true,
   authorClass: "human",
-  author: "Muthu <m@example.com>",
+  author: "Jordan Lee <jordan@example.com>",
   protectedBranch: "main",
   gates: [gr("build", "pass", true, "ok"), gr("checks", "fail", false, "lint warned")],
   blockedBy: [],

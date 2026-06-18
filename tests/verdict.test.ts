@@ -3,7 +3,7 @@ import { evaluate, computeVerdict } from "../src/verdict.ts";
 import { parseConfig } from "../src/config.ts";
 import type { EvalContext, GateResult } from "../src/types.ts";
 
-const HUMAN = "Muthukumaran N <muthuishere@gmail.com>";
+const HUMAN = "Jordan Lee <jordan@example.com>";
 const AGENT = "copilot-swe-agent <bot@users.noreply.github.com>";
 
 function ctx(author: string, msgs: string[] = ["feat (spec 1)"]): EvalContext {

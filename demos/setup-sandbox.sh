@@ -4,7 +4,10 @@
 # Defines `mg` -> the real mergegate binary, and cd's into the sandbox.
 set -uo pipefail
 
-MERGEGATE_BIN="${MERGEGATE_BIN:-/Users/muthuishere/muthu/deemwarworkspace/products/mergegate/bin/mergegate.mjs}"
+# Resolve the repo root from this script's own location so the demo is portable
+# (works for anyone who clones); override with MERGEGATE_BIN if needed.
+_MG_REPO="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
+MERGEGATE_BIN="${MERGEGATE_BIN:-$_MG_REPO/bin/mergegate.mjs}"
 SB="/tmp/mergegate-demo"
 SCENARIO="${1:-blocked}"
 

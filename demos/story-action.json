@@ -22,7 +22,7 @@
       "settings": { "FontSize": 24, "TypingSpeed": "33ms", "Padding": 50, "Width": 1560, "Height": 1020 },
       "lines": [
         "Hide",
-        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-action.sh blocked\"",
+        "Type \"source ~/mergegate/demos/setup-action.sh blocked\"",
         "Enter",
         "Sleep 2.5s",
         "Show",
@@ -42,7 +42,7 @@
         "Enter",
         "Sleep 1.8s",
         "Hide",
-        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-action.sh green\"",
+        "Type \"source ~/mergegate/demos/setup-action.sh green\"",
         "Enter",
         "Sleep 2.5s",
         "Show",

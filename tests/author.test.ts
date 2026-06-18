@@ -18,7 +18,7 @@ describe("classifyAuthor", () => {
   });
 
   test("a normal human is human", () => {
-    expect(classifyAuthor("Muthukumaran N <muthuishere@gmail.com>", P)).toBe("human");
+    expect(classifyAuthor("Jordan Lee <jordan@example.com>", P)).toBe("human");
   });
 
   test("custom patterns are honored", () => {

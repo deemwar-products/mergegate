@@ -28,7 +28,7 @@
       "settings": { "FontSize": 26, "TypingSpeed": "33ms", "Padding": 50, "Width": 1500, "Height": 1000 },
       "lines": [
         "Hide",
-        "Type \"cd /Users/muthuishere/muthu/deemwarworkspace/products/mergegate\"",
+        "Type \"cd ~/mergegate\"",
         "Enter",
         "Sleep 500ms",
         "Show",

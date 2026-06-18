@@ -68,7 +68,7 @@ describe("action entrypoint", () => {
   }, 20000);
 
   test("same change as a human → exit 0 (optional check waived)", () => {
-    const dir = sandbox({ name: "Muthu", email: "m@example.com" }, 1, "feat (spec 1)");
+    const dir = sandbox({ name: "Jordan Lee", email: "jordan@example.com" }, 1, "feat (spec 1)");
     const { res } = runEntrypoint(dir, {});
     expect(res.status).toBe(0);
     expect(res.stdout).toContain("clear to merge");
@@ -76,7 +76,7 @@ describe("action entrypoint", () => {
   }, 20000);
 
   test("forced agent author input overrides detection", () => {
-    const dir = sandbox({ name: "Muthu", email: "m@example.com" }, 1, "feat (spec 1)");
+    const dir = sandbox({ name: "Jordan Lee", email: "jordan@example.com" }, 1, "feat (spec 1)");
     const { res } = runEntrypoint(dir, { MG_AUTHOR: "copilot-swe-agent <bot@x>" });
     expect(res.status).toBe(1);
     rmSync(dir, { recursive: true, force: true });

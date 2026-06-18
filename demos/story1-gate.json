@@ -22,7 +22,7 @@
       "settings": { "FontSize": 26, "TypingSpeed": "35ms", "Padding": 50, "Width": 1500, "Height": 1000 },
       "lines": [
         "Hide",
-        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-sandbox.sh blocked\"",
+        "Type \"source ~/mergegate/demos/setup-sandbox.sh blocked\"",
         "Enter",
         "Sleep 2.5s",
         "Show",
@@ -45,7 +45,7 @@
         "Enter",
         "Sleep 2.2s",
         "Hide",
-        "Type \"source /Users/muthuishere/muthu/deemwarworkspace/products/mergegate/demos/setup-sandbox.sh green\"",
+        "Type \"source ~/mergegate/demos/setup-sandbox.sh green\"",
         "Enter",
         "Sleep 2.5s",
         "Show",

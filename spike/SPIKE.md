@@ -1,4 +1,4 @@
-# mergegate spike — de-risking the hard part (M0)
+# mergegate spike — de-risking the hard part
 
 **Question to de-risk:** the validated wedge depends on **author-conditioned gating** —
 holding agent-authored PRs to a stricter bar than humans. Is that *mechanically real*, and
@@ -32,8 +32,6 @@ The same mechanism is wired end-to-end in the MVP and proven at three layers:
    against a bare remote in the Story-3 demo).
 
 **Conclusion:** the technical hard part is **de-risked** — author-conditioned, evidence-based
-gating works and fills a verified native gap. The remaining risk is **market, not tech**
-(WTP for an unbundled gate — see [../ceo/strategy/mergegate-validation.md](../ceo/strategy/mergegate-validation.md)),
-which is exactly why the recommendation is PIVOT + DEFER-scalable, not a build-out.
+gating works and fills a verified native gap (GitHub rulesets cannot match on PR author).
 
 Run it: `bash spike/prove-wedge.sh`
