@@ -8,19 +8,109 @@ import { resolve as resolve3 } from "node:path";
 // src/config.ts
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-var CONFIG_FILENAMES = ["mergegate.config.json", ".mergegate.json"];
-var DEFAULT_AGENT_AUTHORS = [
-  "\\[bot\\]",
-  "copilot-swe-agent",
-  "github-actions",
-  "dependabot",
-  "claude",
-  "codex",
-  "cursor",
-  "devin",
-  "noreply@anthropic\\.com",
-  "agents@"
+
+// src/author.ts
+function classifyAuthor(author, patterns) {
+  const hay = author.toLowerCase();
+  for (const p of patterns) {
+    let re;
+    try {
+      re = new RegExp(p, "i");
+    } catch {
+      if (hay.includes(p.toLowerCase()))
+        return "agent";
+      continue;
+    }
+    if (re.test(author))
+      return "agent";
+  }
+  return "human";
+}
+
+// src/agents.ts
+var AGENTS = [
+  {
+    id: "copilot-swe-agent",
+    label: "GitHub Copilot coding agent",
+    match: ["copilot-swe-agent", "copilot\\[bot\\]"],
+    url: "https://github.com/features/copilot"
+  },
+  {
+    id: "cursor",
+    label: "Cursor Agent",
+    match: ["cursoragent", "@cursor\\.com"],
+    url: "https://cursor.com"
+  },
+  {
+    id: "devin",
+    label: "Devin (Cognition)",
+    match: ["devin-ai-integration", "devin\\[bot\\]"],
+    url: "https://devin.ai"
+  },
+  {
+    id: "claude-code",
+    label: "Claude Code",
+    match: ["noreply@anthropic\\.com", "claude\\[bot\\]"],
+    url: "https://claude.com/claude-code"
+  },
+  {
+    id: "codex",
+    label: "OpenAI Codex",
+    match: ["chatgpt-codex", "codex\\[bot\\]"],
+    url: "https://openai.com/codex"
+  },
+  {
+    id: "dependabot",
+    label: "Dependabot",
+    match: ["dependabot\\[bot\\]", "dependabot"],
+    url: "https://github.com/dependabot"
+  },
+  {
+    id: "github-actions",
+    label: "GitHub Actions bot",
+    match: ["github-actions\\[bot\\]", "github-actions", "41898282\\+github-actions"],
+    url: "https://docs.github.com/actions"
+  },
+  {
+    id: "renovate",
+    label: "Renovate bot",
+    match: ["renovate\\[bot\\]", "renovate-bot"],
+    url: "https://github.com/renovatebot/renovate"
+  },
+  {
+    id: "jules",
+    label: "Jules (Google)",
+    match: ["google-labs-jules", "jules\\[bot\\]"],
+    url: "https://jules.google"
+  },
+  {
+    id: "sweep",
+    label: "Sweep",
+    match: ["sweep-ai\\[bot\\]", "sweep\\[bot\\]"],
+    url: "https://sweep.dev"
+  },
+  {
+    id: "aider",
+    label: "Aider",
+    match: ["aider\\[bot\\]"],
+    url: "https://aider.chat"
+  },
+  {
+    id: "deemwar-agent",
+    label: "deemwar fleet agent",
+    match: ["agents@deemwar\\.com"],
+    url: "https://deemwar.com"
+  },
+  {
+    id: "generic-bot",
+    label: "Generic [bot] account",
+    match: ["\\[bot\\]"]
+  }
 ];
+var DEFAULT_AGENT_AUTHORS = AGENTS.flatMap((a) => a.match);
+
+// src/config.ts
+var CONFIG_FILENAMES = ["mergegate.config.json", ".mergegate.json"];
 var DEFAULT_POLICY = {
   agentAuthors: DEFAULT_AGENT_AUTHORS,
   agent: { requireAll: true },
@@ -86,24 +176,6 @@ function loadConfig(dir) {
     throw new ConfigError(`${path}: invalid JSON — ${e.message}`);
   }
   return parseConfig(raw, path);
-}
-
-// src/author.ts
-function classifyAuthor(author, patterns) {
-  const hay = author.toLowerCase();
-  for (const p of patterns) {
-    let re;
-    try {
-      re = new RegExp(p, "i");
-    } catch {
-      if (hay.includes(p.toLowerCase()))
-        return "agent";
-      continue;
-    }
-    if (re.test(author))
-      return "agent";
-  }
-  return "human";
 }
 
 // src/gates.ts

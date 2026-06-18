@@ -1,22 +1,14 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { MergegateConfig, PolicyConfig } from "./types.ts";
+// The default agent-author patterns are DERIVED from the coding-agent registry
+// (src/agents.ts) — the single source of truth. Imported for local use in
+// DEFAULT_POLICY and re-exported so existing importers keep resolving it here.
+import { DEFAULT_AGENT_AUTHORS } from "./agents.ts";
+
+export { DEFAULT_AGENT_AUTHORS };
 
 export const CONFIG_FILENAMES = ["mergegate.config.json", ".mergegate.json"];
-
-/** Patterns that, by default, mark a commit author as an autonomous agent. */
-export const DEFAULT_AGENT_AUTHORS = [
-  "\\[bot\\]",
-  "copilot-swe-agent",
-  "github-actions",
-  "dependabot",
-  "claude",
-  "codex",
-  "cursor",
-  "devin",
-  "noreply@anthropic\\.com",
-  "agents@",
-];
 
 export const DEFAULT_POLICY: Required<PolicyConfig> = {
   agentAuthors: DEFAULT_AGENT_AUTHORS,
