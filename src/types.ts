@@ -20,6 +20,21 @@ export interface GateConfig {
   timeoutMs?: number;
 }
 
+/** A per-identity override: tune WHICH gates a specific author must pass, keyed on
+ *  the author string. It only adjusts gate-requirements within a class — it never
+ *  re-classifies (agent stays agent). First matching rule (in array order) wins. */
+export interface IdentityRule {
+  /** Case-insensitive regex(es) matched against "<name> <email>" (like agentAuthors). */
+  match: string | string[];
+  /** Shown in the verdict so an applied rule (and any shadowing) is visible. */
+  label?: string;
+  /** Require every gate for this identity. Mutually exclusive with requireGates. */
+  requireAll?: boolean;
+  /** The explicit allow-list: ONLY these gates are required for this identity (most
+   *  granular). e.g. Dependabot → ["tests", "build"] (no spec). */
+  requireGates?: string[];
+}
+
 export interface PolicyConfig {
   /** Substring/regex patterns matched against "<name> <email>" to classify an author as an agent. */
   agentAuthors?: string[];
@@ -27,6 +42,8 @@ export interface PolicyConfig {
   agent?: { requireAll?: boolean };
   /** Human-authored changes: honor each gate's own `required` flag. Default requireAll false. */
   human?: { requireAll?: boolean };
+  /** Granular, identity-aware overrides applied on top of the class default. */
+  identities?: IdentityRule[];
 }
 
 export interface MergegateConfig {
@@ -60,6 +77,11 @@ export interface Verdict {
   gates: GateResult[];
   /** Names of required gates that did not pass. */
   blockedBy: GateName[];
+  /** Label (or pattern) of the identity rule that tuned this verdict's requirements, if any. */
+  appliedRule?: string;
+  /** For an AGENT author: gates that the agent default would require but the applied
+   *  identity rule dropped — the safety signal (the gate was relaxed for an agent). */
+  loosenedGates?: GateName[];
 }
 
 /** Context the engine needs to evaluate a changeset. */

@@ -24,7 +24,11 @@ function dur(ms: number): string {
 export function formatReport(v: Verdict): string {
   const lines: string[] = [];
   const classTag = v.authorClass === "agent" ? yellow("agent") : "human";
-  lines.push(bold("mergegate") + dim(` · guarding ${v.protectedBranch} · author: ${v.author} [${classTag}]`));
+  const rule = v.appliedRule ? dim(` · policy: ${v.appliedRule}`) : "";
+  lines.push(bold("mergegate") + dim(` · guarding ${v.protectedBranch} · author: ${v.author} [${classTag}]`) + rule);
+  if (v.loosenedGates && v.loosenedGates.length > 0) {
+    lines.push(yellow(`  ⚠ identity rule "${v.appliedRule}" relaxed ${v.loosenedGates.length} agent gate(s): ${v.loosenedGates.join(", ")}`));
+  }
   lines.push("");
   for (const g of v.gates) {
     const req = g.required ? "" : dim(" (optional)");

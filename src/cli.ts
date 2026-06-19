@@ -60,6 +60,8 @@ OPTIONS (check / gate)
   --base <ref>          Base ref to diff against (default: config protectedBranch).
   --author "<a>"        Override the change author ("Name <email>").
   --agent | --human     Force the author class instead of auto-detecting.
+  --strict              Fail (exit 2) if an identity policy rule relaxed any required
+                        gate for an agent author (CI guard). Without it, that only warns.
   --format <fmt>        Output format: text (default) | json | markdown | summary.
   --json                Shorthand for --format json.
 
@@ -87,6 +89,20 @@ function buildContext(dir: string, flags: Record<string, string | boolean>, base
 }
 
 const useColorDefault = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+
+/** Safety guard: an identity rule that relaxed a gate for an AGENT author always warns
+ *  on stderr; under `--strict` it's a hard error (exit 2) so CI can forbid loosening. */
+function strictGuard(v: Verdict, flags: Record<string, string | boolean>): number | null {
+  if (!v.loosenedGates || v.loosenedGates.length === 0) return null;
+  console.error(
+    `mergegate: identity rule "${v.appliedRule}" relaxed ${v.loosenedGates.length} gate(s) for an agent author: ${v.loosenedGates.join(", ")}`,
+  );
+  if (flags.strict) {
+    console.error(`mergegate: --strict — refusing to run with a loosened agent gate.`);
+    return 2;
+  }
+  return null;
+}
 
 /** Shared path for `check` and `summary`: load config, build context, evaluate.
  *  Returns a non-zero exit code on a config error instead of a verdict. */
@@ -128,6 +144,9 @@ function runCheck(args: string[]): number {
   if ("code" in r) return r.code;
   const { verdict } = r;
 
+  const guard = strictGuard(verdict, flags);
+  if (guard !== null) return guard;
+
   const format = flags.json ? "json" : typeof flags.format === "string" ? flags.format : "text";
   switch (format) {
     case "json":
@@ -157,6 +176,8 @@ function runSummary(args: string[]): number {
   const dir = resolve(typeof flags.dir === "string" ? flags.dir : ".");
   const r = buildVerdict(dir, flags);
   if ("code" in r) return r.code;
+  const guard = strictGuard(r.verdict, flags);
+  if (guard !== null) return guard;
   const s = summarize(r.verdict);
   const markdown = flags.markdown || flags.md || flags.format === "markdown" || flags.format === "md";
   if (flags.json) {

@@ -4,36 +4,58 @@ import type {
   Verdict,
   GateResult,
   AuthorClass,
+  IdentityRule,
 } from "./types.ts";
-import { classifyAuthor } from "./author.ts";
+import { classifyAuthor, matchIdentity } from "./author.ts";
 import { runGates } from "./gates.ts";
 import { DEFAULT_POLICY } from "./config.ts";
 
 /**
- * Decide whether a gate must pass for this verdict, given the author class and policy.
- * Agent PRs (the core mergegate promise) require EVERY gate. Human PRs honor each
- * gate's own `required` flag unless the human policy also sets requireAll.
+ * Decide whether a gate must pass, given the class default (requireAll) and an optional
+ * identity rule that overrides it. Agent PRs default to EVERY gate (the core promise);
+ * an identity rule can pin an explicit allow-list (requireGates) or flip requireAll.
  */
-export function isGateRequired(
+export function isGateRequiredBy(
   gate: GateResult,
-  authorClass: AuthorClass,
   requireAll: boolean,
+  rule: IdentityRule | null | undefined,
 ): boolean {
-  if (requireAll) return true;
-  return gate.required;
+  if (rule?.requireGates) return rule.requireGates.includes(gate.name);
+  if (rule && rule.requireAll !== undefined) return rule.requireAll || !!gate.required;
+  return requireAll || !!gate.required;
 }
 
-/** Compute a verdict from already-run gate results (pure — no side effects). */
+/** A readable name for an applied rule — its label, else its first match pattern. */
+function ruleLabel(rule: IdentityRule): string {
+  return rule.label ?? (Array.isArray(rule.match) ? rule.match[0]! : rule.match);
+}
+
+/** Compute a verdict from already-run gate results (pure — no side effects). The
+ *  optional `rule` tunes which gates are required for this identity. */
 export function computeVerdict(
   results: GateResult[],
   authorClass: AuthorClass,
   author: string,
   protectedBranch: string,
   requireAll: boolean,
+  rule?: IdentityRule | null,
 ): Verdict {
-  const blockedBy = results
-    .filter((g) => isGateRequired(g, authorClass, requireAll) && g.status !== "pass")
-    .map((g) => g.name);
+  const required = (g: GateResult) => isGateRequiredBy(g, requireAll, rule);
+  const blockedBy = results.filter((g) => required(g) && g.status !== "pass").map((g) => g.name);
+
+  let appliedRule: string | undefined;
+  let loosenedGates: string[] | undefined;
+  if (rule) {
+    appliedRule = ruleLabel(rule);
+    if (authorClass === "agent") {
+      // Safety signal: gates the agent default would require but this rule dropped.
+      const dropped = results
+        .filter((g) => (requireAll || !!g.required) && !required(g))
+        .map((g) => g.name);
+      if (dropped.length > 0) loosenedGates = dropped;
+    }
+  }
+
   return {
     pass: blockedBy.length === 0,
     authorClass,
@@ -41,6 +63,8 @@ export function computeVerdict(
     protectedBranch,
     gates: results,
     blockedBy,
+    appliedRule,
+    loosenedGates,
   };
 }
 
@@ -53,6 +77,8 @@ export function evaluate(config: MergegateConfig, ctx: EvalContext): Verdict {
     authorClass === "agent"
       ? policy.agent?.requireAll ?? true
       : policy.human?.requireAll ?? false;
+  // Identity rules tune gate-requirements within the class — they never re-classify.
+  const rule = matchIdentity(ctx.author, policy.identities);
   const results = runGates(config.gates, ctx);
   return computeVerdict(
     results,
@@ -60,5 +86,6 @@ export function evaluate(config: MergegateConfig, ctx: EvalContext): Verdict {
     ctx.author,
     config.protectedBranch ?? "main",
     requireAll,
+    rule,
   );
 }

@@ -10,7 +10,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 // src/author.ts
-function classifyAuthor(author, patterns) {
+function anyMatch(author, patterns) {
   const hay = author.toLowerCase();
   for (const p of patterns) {
     let re;
@@ -18,13 +18,24 @@ function classifyAuthor(author, patterns) {
       re = new RegExp(p, "i");
     } catch {
       if (hay.includes(p.toLowerCase()))
-        return "agent";
+        return true;
       continue;
     }
     if (re.test(author))
-      return "agent";
+      return true;
   }
-  return "human";
+  return false;
+}
+function classifyAuthor(author, patterns) {
+  return anyMatch(author, patterns) ? "agent" : "human";
+}
+function matchIdentity(author, rules) {
+  for (const r of rules ?? []) {
+    const pats = Array.isArray(r.match) ? r.match : [r.match];
+    if (anyMatch(author, pats))
+      return r;
+  }
+  return null;
 }
 
 // src/agents.ts
@@ -123,10 +134,58 @@ var CONFIG_FILENAMES = ["mergegate.config.json", ".mergegate.json"];
 var DEFAULT_POLICY = {
   agentAuthors: DEFAULT_AGENT_AUTHORS,
   agent: { requireAll: true },
-  human: { requireAll: false }
+  human: { requireAll: false },
+  identities: []
 };
 
 class ConfigError extends Error {
+}
+function parseIdentities(raw, gateNames, source) {
+  if (raw === undefined)
+    return [];
+  if (!Array.isArray(raw)) {
+    throw new ConfigError(`${source}: "policy.identities" must be an array`);
+  }
+  return raw.map((r, i) => {
+    const where = `${source}: policy.identities[${i}]`;
+    if (typeof r !== "object" || r === null || Array.isArray(r)) {
+      throw new ConfigError(`${where} must be an object`);
+    }
+    const rule = r;
+    const match = rule.match;
+    const patterns = Array.isArray(match) ? match : match === undefined ? [] : [match];
+    if (patterns.length === 0) {
+      throw new ConfigError(`${where} needs a "match" (a pattern string or array of strings)`);
+    }
+    if (!patterns.every((p) => typeof p === "string" && p.length > 0)) {
+      throw new ConfigError(`${where} "match" must be non-empty string(s)`);
+    }
+    const hasRequireAll = rule.requireAll !== undefined;
+    const hasRequireGates = rule.requireGates !== undefined;
+    if (hasRequireAll && hasRequireGates) {
+      throw new ConfigError(`${where} sets both "requireAll" and "requireGates" — use one (requireGates is the explicit allow-list)`);
+    }
+    let requireGates;
+    if (hasRequireGates) {
+      if (!Array.isArray(rule.requireGates) || !rule.requireGates.every((g) => typeof g === "string")) {
+        throw new ConfigError(`${where} "requireGates" must be an array of gate names`);
+      }
+      for (const g of rule.requireGates) {
+        if (!gateNames.includes(g)) {
+          throw new ConfigError(`${where} "requireGates" references unknown gate "${g}" (defined gates: ${gateNames.join(", ")})`);
+        }
+      }
+      requireGates = rule.requireGates;
+    }
+    const out = { match };
+    if (typeof rule.label === "string")
+      out.label = rule.label;
+    if (hasRequireAll)
+      out.requireAll = !!rule.requireAll;
+    if (requireGates)
+      out.requireGates = requireGates;
+    return out;
+  });
 }
 function findConfigPath(dir) {
   for (const name of CONFIG_FILENAMES) {
@@ -164,7 +223,8 @@ function parseConfig(raw, source = "config") {
   const policy = {
     agentAuthors: policyIn.agentAuthors ?? DEFAULT_POLICY.agentAuthors,
     agent: { requireAll: policyIn.agent?.requireAll ?? DEFAULT_POLICY.agent.requireAll },
-    human: { requireAll: policyIn.human?.requireAll ?? DEFAULT_POLICY.human.requireAll }
+    human: { requireAll: policyIn.human?.requireAll ?? DEFAULT_POLICY.human.requireAll },
+    identities: parseIdentities(policyIn.identities, gateNames, source)
   };
   return {
     version: typeof obj.version === "number" ? obj.version : 1,
@@ -297,28 +357,47 @@ function runGates(gates, ctx) {
 }
 
 // src/verdict.ts
-function isGateRequired(gate, authorClass, requireAll) {
-  if (requireAll)
-    return true;
-  return gate.required;
+function isGateRequiredBy(gate, requireAll, rule) {
+  if (rule?.requireGates)
+    return rule.requireGates.includes(gate.name);
+  if (rule && rule.requireAll !== undefined)
+    return rule.requireAll || !!gate.required;
+  return requireAll || !!gate.required;
 }
-function computeVerdict(results, authorClass, author, protectedBranch, requireAll) {
-  const blockedBy = results.filter((g) => isGateRequired(g, authorClass, requireAll) && g.status !== "pass").map((g) => g.name);
+function ruleLabel(rule) {
+  return rule.label ?? (Array.isArray(rule.match) ? rule.match[0] : rule.match);
+}
+function computeVerdict(results, authorClass, author, protectedBranch, requireAll, rule) {
+  const required = (g) => isGateRequiredBy(g, requireAll, rule);
+  const blockedBy = results.filter((g) => required(g) && g.status !== "pass").map((g) => g.name);
+  let appliedRule;
+  let loosenedGates;
+  if (rule) {
+    appliedRule = ruleLabel(rule);
+    if (authorClass === "agent") {
+      const dropped = results.filter((g) => (requireAll || !!g.required) && !required(g)).map((g) => g.name);
+      if (dropped.length > 0)
+        loosenedGates = dropped;
+    }
+  }
   return {
     pass: blockedBy.length === 0,
     authorClass,
     author,
     protectedBranch,
     gates: results,
-    blockedBy
+    blockedBy,
+    appliedRule,
+    loosenedGates
   };
 }
 function evaluate(config, ctx) {
   const policy = config.policy ?? DEFAULT_POLICY;
   const authorClass = ctx.forceClass ?? classifyAuthor(ctx.author, policy.agentAuthors ?? DEFAULT_POLICY.agentAuthors);
   const requireAll = authorClass === "agent" ? policy.agent?.requireAll ?? true : policy.human?.requireAll ?? false;
+  const rule = matchIdentity(ctx.author, policy.identities);
   const results = runGates(config.gates, ctx);
-  return computeVerdict(results, authorClass, ctx.author, config.protectedBranch ?? "main", requireAll);
+  return computeVerdict(results, authorClass, ctx.author, config.protectedBranch ?? "main", requireAll, rule);
 }
 
 // src/report.ts
@@ -345,7 +424,11 @@ function dur(ms) {
 function formatReport(v) {
   const lines = [];
   const classTag = v.authorClass === "agent" ? yellow("agent") : "human";
-  lines.push(bold("mergegate") + dim(` · guarding ${v.protectedBranch} · author: ${v.author} [${classTag}]`));
+  const rule = v.appliedRule ? dim(` · policy: ${v.appliedRule}`) : "";
+  lines.push(bold("mergegate") + dim(` · guarding ${v.protectedBranch} · author: ${v.author} [${classTag}]`) + rule);
+  if (v.loosenedGates && v.loosenedGates.length > 0) {
+    lines.push(yellow(`  ⚠ identity rule "${v.appliedRule}" relaxed ${v.loosenedGates.length} agent gate(s): ${v.loosenedGates.join(", ")}`));
+  }
   lines.push("");
   for (const g of v.gates) {
     const req = g.required ? "" : dim(" (optional)");
@@ -823,6 +906,8 @@ OPTIONS (check / gate)
   --base <ref>          Base ref to diff against (default: config protectedBranch).
   --author "<a>"        Override the change author ("Name <email>").
   --agent | --human     Force the author class instead of auto-detecting.
+  --strict              Fail (exit 2) if an identity policy rule relaxed any required
+                        gate for an agent author (CI guard). Without it, that only warns.
   --format <fmt>        Output format: text (default) | json | markdown | summary.
   --json                Shorthand for --format json.
 
@@ -850,6 +935,16 @@ function buildContext(dir, flags, base) {
   return { cwd: dir, author, commitMessages, forceClass };
 }
 var useColorDefault2 = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+function strictGuard(v, flags) {
+  if (!v.loosenedGates || v.loosenedGates.length === 0)
+    return null;
+  console.error(`mergegate: identity rule "${v.appliedRule}" relaxed ${v.loosenedGates.length} gate(s) for an agent author: ${v.loosenedGates.join(", ")}`);
+  if (flags.strict) {
+    console.error(`mergegate: --strict — refusing to run with a loosened agent gate.`);
+    return 2;
+  }
+  return null;
+}
 function buildVerdict(dir, flags) {
   let config;
   try {
@@ -885,6 +980,9 @@ function runCheck2(args) {
   if ("code" in r)
     return r.code;
   const { verdict } = r;
+  const guard = strictGuard(verdict, flags);
+  if (guard !== null)
+    return guard;
   const format = flags.json ? "json" : typeof flags.format === "string" ? flags.format : "text";
   switch (format) {
     case "json":
@@ -908,6 +1006,9 @@ function runSummary(args) {
   const r = buildVerdict(dir, flags);
   if ("code" in r)
     return r.code;
+  const guard = strictGuard(r.verdict, flags);
+  if (guard !== null)
+    return guard;
   const s = summarize(r.verdict);
   const markdown = flags.markdown || flags.md || flags.format === "markdown" || flags.format === "md";
   if (flags.json) {
