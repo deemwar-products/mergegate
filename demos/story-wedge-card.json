@@ -1,0 +1,15 @@
+{
+  "name": "mergegate-wedge-card",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:wedge", "text": "Here's the gap nobody else closes. GitHub can gate on the branch — but not on who opened the pull request. Author is bypass-only. mergegate gates on exactly that." }
+    ]
+  },
+  "cards": [
+    { "id": "wedge", "title": "GitHub gates on branches.", "subtitle": "not on WHO opened the PR — author is bypass-only", "style": "stakes", "duration": 13 }
+  ],
+  "timeline": ["card:wedge"]
+}
