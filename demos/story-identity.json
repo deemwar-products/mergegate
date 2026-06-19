@@ -1,0 +1,62 @@
+{
+  "name": "mergegate-identity",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "Not every agent is equal. A dependency bump is not a feature pull request — but the gate treats them the same." },
+      { "at": "card:turn",   "text": "Identity-aware policy rules tune the gate per author. Dependabot can skip the spec; a feature agent still clears every gate — and any loosening is loud, never silent." },
+      { "at": "vhs:identity", "text": "One rule says Dependabot needs build and tests, not a spec. Its bump passes — but mergegate warns that it relaxed a gate for an agent. A feature agent gets no such pass: still blocked on the missing spec. And in CI, strict mode refuses any relaxed agent gate outright." },
+      { "at": "card:outro",  "text": "mergegate. Granular, identity-aware — and never silent. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Not every agent is equal.", "subtitle": "a dependency bump isn't a feature PR", "style": "stakes", "duration": 8 },
+    { "id": "turn",   "title": "Identity-aware policy rules.", "subtitle": "tune the gate per author — safely", "style": "brand", "duration": 13 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "granular, never silent", "style": "close", "duration": 8.5 }
+  ],
+  "vhs": [
+    {
+      "id": "identity",
+      "settings": { "FontSize": 23, "TypingSpeed": "33ms", "Padding": 50, "Width": 1620, "Height": 1040 },
+      "lines": [
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-identity.sh\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# per-identity policy — see the rule\"",
+        "Enter",
+        "Sleep 700ms",
+        "Type \"cat mergegate.config.json\"",
+        "Enter",
+        "Sleep 4s",
+        "Type \"# a Dependabot bump: our rule needs build+tests, not a spec\"",
+        "Enter",
+        "Sleep 1s",
+        "Type \"mg check\"",
+        "Enter",
+        "Sleep 5s",
+        "Type \"# a feature agent's PR still needs every gate:\"",
+        "Enter",
+        "Sleep 1s",
+        "Type \"mg check --author 'copilot-swe-agent <copilot@users.noreply.github.com>'\"",
+        "Enter",
+        "Sleep 5s",
+        "Type \"# and CI can forbid any relaxation:\"",
+        "Enter",
+        "Sleep 1s",
+        "Type \"mg check --strict ; echo exit=$?\"",
+        "Enter",
+        "Sleep 4.5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:identity", "text": "Per-identity rule: Dependabot needs build + tests, not a spec → PASS (with a warning).", "from": 17.0, "to": 22.5 },
+    { "segment": "vhs:identity", "text": "A feature agent still needs every gate → ✘ BLOCKED on spec.", "from": 30.0, "to": 35.0 },
+    { "segment": "vhs:identity", "text": "--strict: CI refuses any relaxed agent gate (exit 2).", "from": 40.0, "to": 44.5 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:identity", "card:outro"]
+}
