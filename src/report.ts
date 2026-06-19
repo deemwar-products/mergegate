@@ -5,6 +5,7 @@ const c = (code: string, s: string) => (useColor ? `\x1b[${code}m${s}\x1b[0m` : 
 const green = (s: string) => c("32", s);
 const red = (s: string) => c("31", s);
 const yellow = (s: string) => c("33", s);
+const cyan = (s: string) => c("36", s);
 const dim = (s: string) => c("2", s);
 const bold = (s: string) => c("1", s);
 
@@ -33,6 +34,10 @@ export function formatReport(v: Verdict): string {
       for (const ol of g.output.split("\n").slice(-6)) {
         lines.push(dim(`      │ ${ol}`));
       }
+    }
+    // Actionable next step — only for gates that actually block this verdict.
+    if (g.remediation && v.blockedBy.includes(g.name)) {
+      lines.push(cyan(`      → fix: ${g.remediation}`));
     }
   }
   lines.push("");
@@ -82,9 +87,18 @@ export function formatMarkdown(v: Verdict): string {
     const detail = (g.reason || "").replace(/\n/g, " ").slice(0, 160);
     lines.push(`| ${name} | ${mdIcon(g)} | ${detail} |`);
   }
+  // Actionable next steps — only the gates that actually block this verdict.
+  const fixes = v.gates.filter((g) => g.remediation && v.blockedBy.includes(g.name));
+  if (fixes.length > 0) {
+    lines.push("");
+    lines.push("**How to fix**");
+    for (const g of fixes) {
+      lines.push(`- **${g.name}** — ${g.remediation}`);
+    }
+  }
   lines.push("");
   if (!v.pass && v.authorClass === "agent") {
-    lines.push("> ⚠️ Agent-authored change → **all gates required**. Fix the above and re-run the gate.");
+    lines.push("> ⚠️ Agent-authored change → **all gates required**. Fix the items above and re-run the gate.");
   } else if (v.pass) {
     lines.push("> Provably done — spec · build · tests · checks.");
   }

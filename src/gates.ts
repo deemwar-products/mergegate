@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import type { GateConfig, GateName, GateResult, EvalContext } from "./types.ts";
+import { remediationFor, type FailKind } from "./remediation.ts";
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 /** Default builtin:spec pattern — a commit must reference a spec or an issue/ticket. */
@@ -47,6 +48,7 @@ export function runGate(name: GateName, gate: GateConfig, ctx: EvalContext): Gat
       required,
       durationMs: Date.now() - start,
       reason,
+      remediation: remediationFor(name, gate, ok ? null : "spec"),
     };
   }
 
@@ -64,6 +66,7 @@ export function runGate(name: GateName, gate: GateConfig, ctx: EvalContext): Gat
 
   if (res.error) {
     const timedOut = (res.error as NodeJS.ErrnoException).code === "ETIMEDOUT";
+    const kind: FailKind = timedOut ? "timeout" : "spawn";
     return {
       name,
       status: "fail",
@@ -71,6 +74,7 @@ export function runGate(name: GateName, gate: GateConfig, ctx: EvalContext): Gat
       durationMs,
       reason: timedOut ? `timed out after ${gate.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms` : `failed to run: ${res.error.message}`,
       output: tail(out),
+      remediation: remediationFor(name, gate, kind),
     };
   }
   const ok = res.status === 0;
@@ -81,6 +85,7 @@ export function runGate(name: GateName, gate: GateConfig, ctx: EvalContext): Gat
     durationMs,
     reason: ok ? `\`${cmd}\` passed` : `\`${cmd}\` exited ${res.status}`,
     output: ok ? undefined : tail(out),
+    remediation: remediationFor(name, gate, ok ? null : "exit"),
   };
 }
 

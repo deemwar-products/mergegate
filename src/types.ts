@@ -48,6 +48,8 @@ export interface GateResult {
   reason: string;
   /** Tail of captured stdout/stderr for failed `run` gates. */
   output?: string;
+  /** One actionable fix hint, set when the gate fails (see remediation.ts). */
+  remediation?: string;
 }
 
 export interface Verdict {

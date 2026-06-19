@@ -189,6 +189,32 @@ function loadConfig(dir) {
 
 // src/gates.ts
 import { spawnSync } from "node:child_process";
+
+// src/remediation.ts
+function safeCmd(gate) {
+  const raw = (gate.run ?? "").replace(/\s+/g, " ").trim();
+  if (!raw)
+    return "the gate command";
+  return raw.length > 120 ? raw.slice(0, 119) + "…" : raw;
+}
+function remediationFor(name, gate, kind) {
+  if (!kind)
+    return;
+  switch (kind) {
+    case "spec": {
+      const pattern = gate.pattern ?? DEFAULT_SPEC_PATTERN;
+      return `Reference a spec or issue in every commit — e.g. \`fix: … (spec 12)\` or \`#12\`. Each commit subject must match /${pattern}/.`;
+    }
+    case "timeout":
+      return `\`${safeCmd(gate)}\` timed out — make it faster or raise this gate's \`timeoutMs\`.`;
+    case "spawn":
+      return `\`${safeCmd(gate)}\` couldn't start — check it's installed and on your PATH.`;
+    case "exit":
+      return gate.run ? `Run \`${safeCmd(gate)}\` locally, fix what it reports, then push.` : `Resolve the "${name}" gate locally, then re-run mergegate.`;
+  }
+}
+
+// src/gates.ts
 var DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 var DEFAULT_SPEC_PATTERN = "(spec[-:# ]?\\d+|#\\d+|[A-Z]{2,}-\\d+)";
 function tail(s, lines = 20) {
@@ -228,7 +254,8 @@ function runGate(name, gate, ctx) {
       status: ok2 ? "pass" : "fail",
       required,
       durationMs: Date.now() - start,
-      reason
+      reason,
+      remediation: remediationFor(name, gate, ok2 ? null : "spec")
     };
   }
   const cmd = gate.run;
@@ -243,13 +270,15 @@ function runGate(name, gate, ctx) {
   const out = `${res.stdout ?? ""}${res.stderr ?? ""}`;
   if (res.error) {
     const timedOut = res.error.code === "ETIMEDOUT";
+    const kind = timedOut ? "timeout" : "spawn";
     return {
       name,
       status: "fail",
       required,
       durationMs,
       reason: timedOut ? `timed out after ${gate.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms` : `failed to run: ${res.error.message}`,
-      output: tail(out)
+      output: tail(out),
+      remediation: remediationFor(name, gate, kind)
     };
   }
   const ok = res.status === 0;
@@ -259,7 +288,8 @@ function runGate(name, gate, ctx) {
     required,
     durationMs,
     reason: ok ? `\`${cmd}\` passed` : `\`${cmd}\` exited ${res.status}`,
-    output: ok ? undefined : tail(out)
+    output: ok ? undefined : tail(out),
+    remediation: remediationFor(name, gate, ok ? null : "exit")
   };
 }
 function runGates(gates, ctx) {
@@ -297,6 +327,7 @@ var c = (code, s) => useColor ? `\x1B[${code}m${s}\x1B[0m` : s;
 var green = (s) => c("32", s);
 var red = (s) => c("31", s);
 var yellow = (s) => c("33", s);
+var cyan = (s) => c("36", s);
 var dim = (s) => c("2", s);
 var bold = (s) => c("1", s);
 function icon(g) {
@@ -325,6 +356,9 @@ function formatReport(v) {
 `).slice(-6)) {
         lines.push(dim(`      │ ${ol}`));
       }
+    }
+    if (g.remediation && v.blockedBy.includes(g.name)) {
+      lines.push(cyan(`      → fix: ${g.remediation}`));
     }
   }
   lines.push("");
@@ -370,9 +404,17 @@ function formatMarkdown(v) {
     const detail = (g.reason || "").replace(/\n/g, " ").slice(0, 160);
     lines.push(`| ${name} | ${mdIcon(g)} | ${detail} |`);
   }
+  const fixes = v.gates.filter((g) => g.remediation && v.blockedBy.includes(g.name));
+  if (fixes.length > 0) {
+    lines.push("");
+    lines.push("**How to fix**");
+    for (const g of fixes) {
+      lines.push(`- **${g.name}** — ${g.remediation}`);
+    }
+  }
   lines.push("");
   if (!v.pass && v.authorClass === "agent") {
-    lines.push("> ⚠️ Agent-authored change → **all gates required**. Fix the above and re-run the gate.");
+    lines.push("> ⚠️ Agent-authored change → **all gates required**. Fix the items above and re-run the gate.");
   } else if (v.pass) {
     lines.push("> Provably done — spec · build · tests · checks.");
   }
