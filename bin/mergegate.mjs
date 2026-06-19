@@ -380,6 +380,54 @@ function formatMarkdown(v) {
 `);
 }
 
+// src/summary.ts
+var count = (gates, s) => gates.filter((g) => g.status === s).length;
+function summarize(v) {
+  const failed = count(v.gates, "fail");
+  const requiredFailed = v.blockedBy.length;
+  const headline = v.pass ? `✔ PASS — clear to merge into ${v.protectedBranch}` : `✘ BLOCKED — ${v.blockedBy.join(", ")}`;
+  return {
+    author: v.author,
+    authorClass: v.authorClass,
+    protectedBranch: v.protectedBranch,
+    pass: v.pass,
+    total: v.gates.length,
+    passed: count(v.gates, "pass"),
+    failed,
+    skipped: count(v.gates, "skipped"),
+    requiredFailed,
+    optionalFailed: failed - requiredFailed,
+    blockedBy: [...v.blockedBy],
+    headline
+  };
+}
+var paint = (on, code, s) => on ? `\x1B[${code}m${s}\x1B[0m` : s;
+function formatSummaryText(s, useColor2) {
+  const classTag = s.authorClass === "agent" ? paint(useColor2, "33", "agent") : "human";
+  const dim2 = (x) => paint(useColor2, "2", x);
+  const counts = `${s.total} gates · ${paint(useColor2, "32", `${s.passed} ✔`)} · ` + `${paint(useColor2, "31", `${s.failed} ✘`)} · ${dim2(`${s.skipped} skipped`)}` + (s.optionalFailed > 0 ? dim2(`  (${s.optionalFailed} optional)`) : "");
+  const headline = s.pass ? paint(useColor2, "1;32", s.headline) : paint(useColor2, "1;31", s.headline);
+  return [
+    paint(useColor2, "1", "mergegate") + dim2(` · ${s.protectedBranch} · ${s.author} [`) + classTag + dim2("]"),
+    `  ${counts}`,
+    `  ${headline}`
+  ].join(`
+`);
+}
+function formatSummaryJson(s) {
+  return JSON.stringify(s, null, 2);
+}
+function formatSummaryMarkdown(s) {
+  const badge = s.pass ? "✅ PASS" : "❌ BLOCKED";
+  const tally = `${s.passed}/${s.total} gates green`;
+  const fails = s.pass ? "" : ` · **${s.requiredFailed}/${s.total}** blocking: ${s.blockedBy.map((n) => `\`${n}\``).join(", ")}`;
+  return [
+    MARKDOWN_MARKER,
+    `${badge} — **mergegate** \`${s.protectedBranch}\` · ${s.author} \`[${s.authorClass}]\` — ${tally}${fails}`
+  ].join(`
+`);
+}
+
 // src/git.ts
 import { spawnSync as spawnSync2 } from "node:child_process";
 function git(args, cwd) {
@@ -603,10 +651,10 @@ function parseFlags(args) {
   return { _, flags };
 }
 var useColorDefault = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
-var paint = (on, code, s) => on ? `\x1B[${code}m${s}\x1B[0m` : s;
-var dim2 = (on, s) => paint(on, "2", s);
-var yellow2 = (on, s) => paint(on, "33", s);
-var green2 = (on, s) => paint(on, "32", s);
+var paint2 = (on, code, s) => on ? `\x1B[${code}m${s}\x1B[0m` : s;
+var dim2 = (on, s) => paint2(on, "2", s);
+var yellow2 = (on, s) => paint2(on, "33", s);
+var green2 = (on, s) => paint2(on, "32", s);
 function probeAuthor(author) {
   const hit = explainMatch(author);
   if (hit)
@@ -715,6 +763,10 @@ COMMANDS
   check                 Run every gate against the current change and print a verdict.
                         Exit 0 = clear to merge, 1 = BLOCKED, 2 = config/usage error.
   gate                  Alias of check, tuned for CI (always prints, machine-friendly).
+  summary               Consolidated one-glance gate digest: author class + pass/fail/skip
+                        counts + a single headline — for a CI job-summary or PR-comment
+                        header. \`--json\` / \`--markdown\` switch the rendering. Same exit
+                        codes as check (0 clear · 1 BLOCKED · 2 error). Also: check --format summary.
   init                  Scaffold mergegate.config.json + a GitHub Actions workflow.
   install-hook          Install a git pre-push hook that blocks pushing the protected branch
                         unless the gate is green.
@@ -729,7 +781,7 @@ OPTIONS (check / gate)
   --base <ref>          Base ref to diff against (default: config protectedBranch).
   --author "<a>"        Override the change author ("Name <email>").
   --agent | --human     Force the author class instead of auto-detecting.
-  --format <fmt>        Output format: text (default) | json | markdown.
+  --format <fmt>        Output format: text (default) | json | markdown | summary.
   --json                Shorthand for --format json.
 
 Docs: https://github.com/deemwar/mergegate`;
@@ -755,26 +807,42 @@ function buildContext(dir, flags, base) {
     forceClass = "human";
   return { cwd: dir, author, commitMessages, forceClass };
 }
-function runCheck2(args) {
-  const { flags } = parseFlags2(args);
-  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+var useColorDefault2 = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+function buildVerdict(dir, flags) {
   let config;
   try {
     config = loadConfig(dir);
   } catch (e) {
     if (e instanceof ConfigError) {
       console.error(`mergegate: ${e.message}`);
-      return 2;
+      return { code: 2 };
     }
     throw e;
   }
-  if (flags["print-branch"]) {
-    console.log(config.protectedBranch ?? "main");
-    return 0;
-  }
   const base = typeof flags.base === "string" ? flags.base : config.protectedBranch ?? "main";
   const ctx = buildContext(dir, flags, base);
-  const verdict = evaluate(config, ctx);
+  return { config, verdict: evaluate(config, ctx) };
+}
+function runCheck2(args) {
+  const { flags } = parseFlags2(args);
+  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+  if (flags["print-branch"]) {
+    try {
+      const config = loadConfig(dir);
+      console.log(config.protectedBranch ?? "main");
+      return 0;
+    } catch (e) {
+      if (e instanceof ConfigError) {
+        console.error(`mergegate: ${e.message}`);
+        return 2;
+      }
+      throw e;
+    }
+  }
+  const r = buildVerdict(dir, flags);
+  if ("code" in r)
+    return r.code;
+  const { verdict } = r;
   const format = flags.json ? "json" : typeof flags.format === "string" ? flags.format : "text";
   switch (format) {
     case "json":
@@ -784,10 +852,30 @@ function runCheck2(args) {
     case "md":
       console.log(formatMarkdown(verdict));
       break;
+    case "summary":
+      console.log(formatSummaryText(summarize(verdict), useColorDefault2()));
+      break;
     default:
       console.log(formatReport(verdict));
   }
   return verdict.pass ? 0 : 1;
+}
+function runSummary(args) {
+  const { flags } = parseFlags2(args);
+  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+  const r = buildVerdict(dir, flags);
+  if ("code" in r)
+    return r.code;
+  const s = summarize(r.verdict);
+  const markdown = flags.markdown || flags.md || flags.format === "markdown" || flags.format === "md";
+  if (flags.json) {
+    console.log(formatSummaryJson(s));
+  } else if (markdown) {
+    console.log(formatSummaryMarkdown(s));
+  } else {
+    console.log(formatSummaryText(s, useColorDefault2()));
+  }
+  return r.verdict.pass ? 0 : 1;
 }
 function main(argv) {
   const [cmd, ...rest] = argv;
@@ -795,6 +883,8 @@ function main(argv) {
     case "check":
     case "gate":
       return runCheck2(rest);
+    case "summary":
+      return runSummary(rest);
     case "init":
       return cmdInit(rest);
     case "install-hook":
