@@ -1,0 +1,61 @@
+{
+  "name": "mergegate-summary",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "A pull request lands. One question matters: is it clear to merge, or not?" },
+      { "at": "card:turn",   "text": "mergegate summary answers it in one glance — who opened it, how many gates passed, and a single headline. Built for a CI job summary or a pull-request comment." },
+      { "at": "vhs:summary", "text": "An agent's pull request: four gates, two green, two red — blocked on spec and tests. The same verdict as a one-line markdown badge you post straight on the PR. The agent fixes it, and the digest flips to a clean pass, exit zero." },
+      { "at": "card:outro",  "text": "mergegate. The whole gate, in one line. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Is this PR clear to merge?", "subtitle": "one glance — not a wall of gate output", "style": "stakes", "duration": 7 },
+    { "id": "turn",   "title": "mergegate summary", "subtitle": "author class · pass/fail counts · one headline", "style": "brand", "duration": 12 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "the whole gate, in one line", "style": "close", "duration": 9 }
+  ],
+  "vhs": [
+    {
+      "id": "summary",
+      "settings": { "FontSize": 26, "TypingSpeed": "35ms", "Padding": 50, "Width": 1500, "Height": 1000 },
+      "lines": [
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-sandbox.sh blocked\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# an agent opened a PR at main — clear to merge?\"",
+        "Enter",
+        "Sleep 800ms",
+        "Type \"mg summary\"",
+        "Enter",
+        "Sleep 4.5s",
+        "Type \"# the same verdict, as a one-line PR comment:\"",
+        "Enter",
+        "Sleep 1s",
+        "Type \"mg summary --markdown\"",
+        "Enter",
+        "Sleep 4s",
+        "Type \"# the agent fixes it properly...\"",
+        "Enter",
+        "Sleep 1.5s",
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-sandbox.sh green\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"mg summary ; echo exit=$?\"",
+        "Enter",
+        "Sleep 4.5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:summary", "text": "One glance: author class · 2 of 4 gates green · ✘ BLOCKED on spec, tests.", "from": 7.0, "to": 12.5 },
+    { "segment": "vhs:summary", "text": "Same verdict as a one-line markdown badge — post it on the PR.", "from": 16.0, "to": 21.0 },
+    { "segment": "vhs:summary", "text": "Fixed → 4 of 4 green → ✔ PASS, exit 0.", "from": 27.5, "to": 32.5 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:summary", "card:outro"]
+}

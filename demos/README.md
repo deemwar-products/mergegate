@@ -8,6 +8,7 @@ House-style demo videos for each MVP story, driven by the storyboards in this fo
 | 2 — governance | `story2-governance.json` | `init` scaffolding; same change PASSES for a human, BLOCKED for an agent. |
 | 3 — enforcement | `story3-enforce.json` | Pre-push hook rejects a real `git push` to main, then lets it land once green. |
 | — the one-line Action | `story-action.json` | `uses: deemwar/mergegate@v0` posts the markdown verdict on the PR. |
+| — the summary digest | `story-summary.json` | `mergegate summary` — one-glance gate digest (author · counts · headline): agent PR BLOCKED → one-line markdown badge → fixed → PASS. Reuses `setup-sandbox.sh blocked`/`green`. |
 
 `setup-sandbox.sh <scenario>` builds the deterministic sandbox each tape drives
 (`blocked` · `green` · `governance` · `init` · `hook`); `setup-action.sh <blocked|green>`
