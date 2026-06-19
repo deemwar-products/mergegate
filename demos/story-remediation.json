@@ -1,0 +1,64 @@
+{
+  "name": "mergegate-remediation",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "A blocked pull request tells you what failed. It rarely tells you what to do about it." },
+      { "at": "card:turn",   "text": "mergegate now answers that. Every gate that blocks the merge comes with an actionable fix — right in the terminal, and in the pull-request comment." },
+      { "at": "vhs:remediation", "text": "An agent's PR is blocked. Under each failing gate, mergegate prints a fix: reference a spec, or run the test command locally. The same steps land as a How to fix list on the PR. The agent follows them, and the gate goes green, exit zero." },
+      { "at": "card:outro",  "text": "mergegate. Provably done — and a clear way forward. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "BLOCKED tells you what failed.", "subtitle": "not what to do about it", "style": "stakes", "duration": 7 },
+    { "id": "turn",   "title": "Now it tells you how to fix it.", "subtitle": "every blocking gate → an actionable next step", "style": "brand", "duration": 11 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "provably done — and a way forward", "style": "close", "duration": 8.5 }
+  ],
+  "vhs": [
+    {
+      "id": "remediation",
+      "settings": { "FontSize": 24, "TypingSpeed": "35ms", "Padding": 50, "Width": 1560, "Height": 1020 },
+      "lines": [
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-sandbox.sh blocked\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# an agent's PR hit the gate — what now?\"",
+        "Enter",
+        "Sleep 800ms",
+        "Type \"mg check\"",
+        "Enter",
+        "Sleep 5.5s",
+        "Type \"# the same fixes, ready to paste on the PR:\"",
+        "Enter",
+        "Sleep 1s",
+        "Type \"mg check --format markdown\"",
+        "Enter",
+        "Sleep 5s",
+        "Type \"# the agent follows the spec hint + fixes the test...\"",
+        "Enter",
+        "Sleep 1.8s",
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-sandbox.sh green\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"git log --oneline -1\"",
+        "Enter",
+        "Sleep 1.5s",
+        "Type \"mg check ; echo exit=$?\"",
+        "Enter",
+        "Sleep 5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:remediation", "text": "Every blocking gate now carries a → fix: next step.", "from": 7.0, "to": 12.5 },
+    { "segment": "vhs:remediation", "text": "The markdown verdict adds a 'How to fix' list for the PR.", "from": 18.5, "to": 23.5 },
+    { "segment": "vhs:remediation", "text": "Agent follows the hints → ✔ PASS, exit 0.", "from": 35.0, "to": 40.0 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:remediation", "card:outro"]
+}
