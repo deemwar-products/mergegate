@@ -1,0 +1,63 @@
+{
+  "name": "mergegate-checks",
+  "size": "1920x1080",
+  "fps": 30,
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "An agent PR can be green and still be wrong — a leftover conflict marker, a focused test that quietly skips the whole suite, a pasted private key. A human reviewer catches those by eye. At 3am, nobody's looking." },
+      { "at": "card:turn",   "text": "mergegate ships a curated library of pre-built checks for exactly those agent-PR failure modes — and you add one in a single command." },
+      { "at": "vhs:checks",  "text": "Here's an agent PR that passes the spec gate — it looks done. But it left a conflict marker and a focused test behind. Browse the library, add the two checks that bite, and re-run: now mergegate blocks it. The gate caught what the agent didn't." },
+      { "at": "card:outro",  "text": "mergegate. Hold agent PRs to a provably-done bar. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Green isn't done.", "subtitle": "an agent PR can pass and still ship a conflict marker, a focused test, a leaked key", "style": "stakes", "duration": 8.5 },
+    { "id": "turn",   "title": "A library of pre-built checks.", "subtitle": "mergegate checks · show · add", "style": "brand", "duration": 7 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "hold agent PRs to a provably-done bar", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "checks",
+      "settings": { "FontSize": 24, "TypingSpeed": "33ms", "Padding": 50, "Width": 1560, "Height": 1020 },
+      "lines": [
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-checks.sh\"",
+        "Enter",
+        "Sleep 1.5s",
+        "Show",
+        "Type \"# an agent PR with just the spec gate — it looks done:\"",
+        "Enter",
+        "Sleep 900ms",
+        "Type \"mg check\"",
+        "Enter",
+        "Sleep 3.2s",
+        "Type \"# but who's catching the residue? reach for the library:\"",
+        "Enter",
+        "Sleep 1.2s",
+        "Type \"mg checks --stack hygiene\"",
+        "Enter",
+        "Sleep 4s",
+        "Type \"# add the two that bite here, in one command:\"",
+        "Enter",
+        "Sleep 1.2s",
+        "Type \"mg checks add no-conflict-markers no-focused-tests-js\"",
+        "Enter",
+        "Sleep 3s",
+        "Type \"# re-run — the gate now catches what the agent didn't:\"",
+        "Enter",
+        "Sleep 1.2s",
+        "Type \"mg check\"",
+        "Enter",
+        "Sleep 4.5s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:checks", "text": "Just the spec gate → the agent PR passes. Looks done.", "from": 2.0, "to": 6.5 },
+    { "segment": "vhs:checks", "text": "A curated library of checks for the common agent-PR failure modes.", "from": 8.5, "to": 13.0 },
+    { "segment": "vhs:checks", "text": "checks add — drop two gates into the config in one command.", "from": 15.0, "to": 19.0 },
+    { "segment": "vhs:checks", "text": "Re-run → BLOCKED. Conflict marker + focused test caught.", "from": 21.0, "to": 26.0 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:checks", "card:outro"]
+}

@@ -185,6 +185,9 @@ Emergency bypass (human, deliberate): `MERGEGATE_SKIP=1 git push`.
 | `mergegate agents` | List the coding agents mergegate detects out of the box. |
 | `mergegate agents --author "<name> <email>"` | Probe one author — agent/human + which pattern fired. |
 | `mergegate agents check` | Audit a repo's recent commit authors — proves the gate won't block a human. |
+| `mergegate checks` | Browse the curated library of pre-built checks for common agent-PR failure modes. |
+| `mergegate checks show <id>` | Print a check's rationale + the gate snippet to paste. |
+| `mergegate checks add <id>` | Append the check's gate into `mergegate.config.json`. |
 | `mergegate check --format json\|markdown` | Machine-readable / PR-comment verdict. |
 
 ## Known agents
@@ -218,6 +221,42 @@ $ mergegate agents check
   human  Devin Carter <devin.carter@gmail.com>
   agent  copilot-swe-agent <bot@users.noreply.github.com>  → copilot-swe-agent /copilot-swe-agent/
 ```
+
+## Checks library
+
+`mergegate init` wires the four pillars (spec / build / tests / checks) to your detected
+stack. The **checks library** is the next layer: a curated catalog of pre-built gates for
+the failure modes that show up specifically in *autonomous-agent* PRs — the diffs that
+look done but ship a leftover `debugger`, a focused test that silently skips the rest of
+the suite, an unresolved conflict marker, or a pasted private key. A human reviewer
+catches these by eye; an unattended agent PR at 3am has no reviewer.
+
+```
+$ mergegate checks
+mergegate · 20 pre-built checks for the common agent-PR failure modes
+
+hygiene
+  no-conflict-markers  No unresolved merge-conflict markers
+                       Agents that auto-resolve a rebase sometimes commit the markers themselves…
+  no-private-keys      No committed private keys
+  no-aws-keys          No AWS access-key IDs
+  …
+node · go · rust · python   (typecheck, lint, format, focused/skipped tests, leftover debug)
+```
+
+Browse a stack, inspect one, then add it in one command:
+
+```
+$ mergegate checks --stack go
+$ mergegate checks show no-focused-tests-js     # rationale + the gate snippet
+$ mergegate checks add no-conflict-markers no-private-keys
+✔ added 2 check(s) to mergegate.config.json
+```
+
+`checks add` appends the gate to your config (collision-suffixed, idempotent). Because a
+check is just a normal gate, it composes with your policy and identity rules for free —
+agent PRs must pass it; humans honor its `required` flag. The catalog lives in
+`src/checks.ts`; adding one is a one-entry PR.
 
 **Your own fleet missing?** Don't edit source — add its commit identity to
 `policy.extraAgentAuthors` in your config (see [Quick start](#quick-start)). That's the

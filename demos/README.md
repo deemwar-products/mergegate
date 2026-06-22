@@ -11,6 +11,7 @@ House-style demo videos for each MVP story, driven by the storyboards in this fo
 | — the summary digest | `story-summary.json` | `mergegate summary` — one-glance gate digest (author · counts · headline): agent PR BLOCKED → one-line markdown badge → fixed → PASS. Reuses `setup-sandbox.sh blocked`/`green`. |
 | — remediation hints | `story-remediation.json` | Actionable fixes in the verdict: each BLOCKING gate gets a `→ fix:` line + a markdown "How to fix" list → agent follows them → PASS. Reuses `setup-sandbox.sh blocked`/`green`. |
 | — identity-aware rules | `story-identity.json` | Granular `policy.identities` rules: Dependabot relaxed to build+tests (warns it dropped spec) vs a feature agent still BLOCKED, and `--strict` refusing the relaxed gate. Uses `setup-identity.sh`. |
+| — checks library | `story-checks.json` | `mergegate checks` — a curated library of pre-built gates for common agent-PR failure modes: a green-looking agent PR hides a conflict marker + a focused test → `checks add` two gates in one command → re-run BLOCKS it. Uses `setup-checks.sh`. |
 
 `setup-sandbox.sh <scenario>` builds the deterministic sandbox each tape drives
 (`blocked` · `green` · `governance` · `init` · `hook`); `setup-action.sh <blocked|green>`

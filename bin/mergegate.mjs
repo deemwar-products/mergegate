@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
 // src/cli.ts
-import { resolve as resolve4 } from "node:path";
+import { resolve as resolve5 } from "node:path";
 
 // src/config.ts
 import { readFileSync, existsSync } from "node:fs";
@@ -864,9 +864,431 @@ function cmdAgents(args) {
   return 0;
 }
 
+// src/commands/checks.ts
+import { resolve as resolve4, join as join4 } from "node:path";
+import { readFileSync as readFileSync3, writeFileSync as writeFileSync3, existsSync as existsSync4 } from "node:fs";
+
+// src/checks.ts
+var HYGIENE = [
+  {
+    id: "no-conflict-markers",
+    label: "No unresolved merge-conflict markers",
+    category: "hygiene",
+    why: "Agents that auto-resolve a rebase sometimes commit the `<<<<<<<` / `>>>>>>>` markers themselves — the diff compiles in their head but not on disk.",
+    gateName: "no-conflict-markers",
+    gate: {
+      description: "Fail if any tracked file still contains a Git merge-conflict marker.",
+      run: "git grep -nE '^(<<<<<<<|>>>>>>>)' -- . && exit 1 || exit 0",
+      required: true
+    }
+  },
+  {
+    id: "no-private-keys",
+    label: "No committed private keys",
+    category: "hygiene",
+    why: "An agent scaffolding a deploy or a test fixture can paste a real PEM private key into the repo without realizing it's a secret.",
+    gateName: "no-private-keys",
+    gate: {
+      description: "Fail if a PEM private-key header is committed anywhere in the tree.",
+      run: "git grep -nE 'BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY' -- . && exit 1 || exit 0",
+      required: true
+    }
+  },
+  {
+    id: "no-aws-keys",
+    label: "No AWS access-key IDs",
+    category: "hygiene",
+    why: "Hardcoded cloud credentials are the highest-blast-radius thing an agent can leak; an `AKIA…` literal in a diff is almost never intentional.",
+    gateName: "no-aws-keys",
+    gate: {
+      description: "Fail if an AWS access-key ID (AKIA/ASIA + 16 chars) appears in any tracked file.",
+      run: "git grep -nE '(AKIA|ASIA)[0-9A-Z]{16}' -- . && exit 1 || exit 0",
+      required: true
+    }
+  },
+  {
+    id: "no-large-files",
+    label: "No large files committed (>5 MB)",
+    category: "hygiene",
+    why: "Agents routinely commit build artifacts, vendored binaries, or a stray `node_modules` blob — bloating history irreversibly.",
+    gateName: "no-large-files",
+    gate: {
+      description: "Fail if any tracked file exceeds 5 MB (adjust the byte threshold to taste).",
+      run: 'git ls-files | while IFS= read -r f; do [ -f "$f" ] && [ "$(wc -c < "$f")" -gt 5242880 ] && echo "$f is larger than 5MB"; done | grep . && exit 1 || exit 0',
+      required: false
+    }
+  }
+];
+var NODE = [
+  {
+    id: "node-typecheck",
+    label: "TypeScript type-check (tsc --noEmit)",
+    category: "node",
+    why: "Agents write code that runs the happy path but fails the type-checker; tests often don't cover the typed edges tsc does.",
+    gateName: "typecheck",
+    gate: {
+      description: "The project type-checks with no emit.",
+      run: "npx --no-install tsc --noEmit",
+      required: false
+    }
+  },
+  {
+    id: "eslint",
+    label: "ESLint (no errors)",
+    category: "node",
+    why: "Lint catches the unused imports, undeclared vars, and no-floating-promise mistakes an agent leaves in a plausible-looking diff.",
+    gateName: "lint",
+    gate: {
+      description: "ESLint passes with zero errors.",
+      run: "npx --no-install eslint .",
+      required: false
+    }
+  },
+  {
+    id: "prettier-check",
+    label: "Prettier formatting check",
+    category: "node",
+    why: "Keeps an agent's reformat-the-world diffs out of review — code must already match the repo's format, not just be reformattable.",
+    gateName: "format",
+    gate: {
+      description: "All files match Prettier formatting (no rewrite needed).",
+      run: "npx --no-install prettier --check .",
+      required: false
+    }
+  },
+  {
+    id: "no-focused-tests-js",
+    label: "No focused tests (.only / fdescribe / fit)",
+    category: "node",
+    why: "A single `it.only` or `fdescribe` silently turns the whole suite into one test — the most dangerous green an agent can produce.",
+    gateName: "no-focused-tests",
+    gate: {
+      description: "Fail if a focused test (.only, fdescribe, fit) is committed.",
+      run: "git grep -nE '(describe|context|it|test)\\.only\\(|fdescribe\\(|fit\\(' -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.mjs' '*.cjs' && exit 1 || exit 0",
+      required: true
+    }
+  },
+  {
+    id: "no-console-log",
+    label: "No leftover console.log",
+    category: "node",
+    why: "Debug `console.log`/`console.debug` lines are the classic agent residue — harmless to compile, noisy in production, and a reviewer's first nit.",
+    gateName: "no-debug-logging",
+    gate: {
+      description: "Fail if console.log / console.debug appears in source (allow it in tests/scripts via pathspec).",
+      run: "git grep -nE 'console\\.(log|debug)\\(' -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.mjs' '*.cjs' ':!*.test.*' ':!*.spec.*' && exit 1 || exit 0",
+      required: false
+    }
+  }
+];
+var GO = [
+  {
+    id: "go-vet",
+    label: "go vet",
+    category: "go",
+    why: "vet catches the printf mismatches, lost struct tags, and shadowed errors an agent's code compiles past.",
+    gateName: "vet",
+    gate: { description: "go vet reports no issues.", run: "go vet ./...", required: false }
+  },
+  {
+    id: "gofmt",
+    label: "gofmt formatting check",
+    category: "go",
+    why: "Enforces canonical Go formatting so an agent's diff is reviewable, not a whitespace storm.",
+    gateName: "gofmt",
+    gate: {
+      description: "All Go files are gofmt-clean.",
+      run: `test -z "$(gofmt -l .)" || { echo 'gofmt needed:'; gofmt -l .; exit 1; }`,
+      required: false
+    }
+  },
+  {
+    id: "staticcheck",
+    label: "staticcheck",
+    category: "go",
+    why: "Deeper static analysis than vet — surfaces the dead code and misused stdlib calls agents generate from stale patterns.",
+    gateName: "staticcheck",
+    gate: { description: "staticcheck passes (requires staticcheck on PATH).", run: "staticcheck ./...", required: false }
+  },
+  {
+    id: "no-skipped-tests-go",
+    label: "No newly skipped Go tests (t.Skip)",
+    category: "go",
+    why: "An agent that can't make a test pass will sometimes `t.Skip` it instead — a green suite that proves nothing.",
+    gateName: "no-skipped-tests",
+    gate: {
+      description: "Fail if t.Skip( appears in a _test.go file.",
+      run: "git grep -nE 't\\.Skip(Now)?\\(' -- '*_test.go' && exit 1 || exit 0",
+      required: false
+    }
+  }
+];
+var RUST = [
+  {
+    id: "cargo-clippy",
+    label: "cargo clippy (deny warnings)",
+    category: "rust",
+    why: "Clippy with -D warnings turns the lints an agent ignores into a hard gate — unwraps, needless clones, dead code.",
+    gateName: "clippy",
+    gate: { description: "cargo clippy passes with warnings denied.", run: "cargo clippy --all-targets -- -D warnings", required: false }
+  },
+  {
+    id: "cargo-fmt",
+    label: "cargo fmt --check",
+    category: "rust",
+    why: "Keeps an agent's output rustfmt-canonical so the diff is signal, not formatting churn.",
+    gateName: "fmt",
+    gate: { description: "All Rust files are rustfmt-clean.", run: "cargo fmt --check", required: false }
+  },
+  {
+    id: "no-dbg-rust",
+    label: "No leftover dbg! macros",
+    category: "rust",
+    why: "`dbg!(...)` is the Rust equivalent of a forgotten print — it compiles, ships, and spams stderr.",
+    gateName: "no-dbg",
+    gate: {
+      description: "Fail if a dbg! macro is committed.",
+      run: "git grep -nE 'dbg!\\(' -- '*.rs' && exit 1 || exit 0",
+      required: false
+    }
+  }
+];
+var PYTHON = [
+  {
+    id: "ruff",
+    label: "Ruff lint",
+    category: "python",
+    why: "Ruff catches the unused imports, undefined names, and bare excepts an agent's plausible-looking Python hides.",
+    gateName: "lint",
+    gate: { description: "ruff check passes.", run: "ruff check .", required: false }
+  },
+  {
+    id: "mypy",
+    label: "mypy type-check",
+    category: "python",
+    why: "Static types catch the wrong-shape returns and None-handling bugs that an agent's runtime test happened not to hit.",
+    gateName: "typecheck",
+    gate: { description: "mypy passes.", run: "mypy .", required: false }
+  },
+  {
+    id: "black-check",
+    label: "Black formatting check",
+    category: "python",
+    why: "Code must already be Black-formatted — keeps an agent's reformatting out of the substantive diff.",
+    gateName: "format",
+    gate: { description: "All files match Black formatting.", run: "black --check .", required: false }
+  },
+  {
+    id: "no-breakpoint-py",
+    label: "No leftover breakpoint() / pdb",
+    category: "python",
+    why: "A stray `breakpoint()` or `pdb.set_trace()` will hang CI or a server forever — an agent drops these while debugging and forgets them.",
+    gateName: "no-debugger",
+    gate: {
+      description: "Fail if breakpoint() / pdb.set_trace() / import pdb is committed.",
+      run: "git grep -nE 'breakpoint\\(\\)|pdb\\.set_trace\\(\\)|^[[:space:]]*import pdb([^[:alnum:]_]|$)' -- '*.py' && exit 1 || exit 0",
+      required: false
+    }
+  }
+];
+var CHECKS = [...HYGIENE, ...NODE, ...GO, ...RUST, ...PYTHON];
+var CHECK_CATEGORIES = ["hygiene", "node", "go", "rust", "python"];
+function findCheck(id) {
+  return CHECKS.find((c2) => c2.id === id);
+}
+function checksByCategory(category) {
+  return category ? CHECKS.filter((c2) => c2.category === category) : CHECKS;
+}
+
+// src/commands/checks.ts
+function parseFlags2(args) {
+  const _ = [];
+  const flags = {};
+  for (let i = 0;i < args.length; i++) {
+    const a = args[i];
+    if (a.startsWith("--")) {
+      const key = a.slice(2);
+      const next = args[i + 1];
+      if (next !== undefined && !next.startsWith("--")) {
+        flags[key] = next;
+        i++;
+      } else {
+        flags[key] = true;
+      }
+    } else {
+      _.push(a);
+    }
+  }
+  return { _, flags };
+}
+var useColorDefault2 = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+var paint3 = (on, code, s) => on ? `\x1B[${code}m${s}\x1B[0m` : s;
+var dim3 = (on, s) => paint3(on, "2", s);
+var bold2 = (on, s) => paint3(on, "1", s);
+var cyan2 = (on, s) => paint3(on, "36", s);
+function isCategory(s) {
+  return CHECK_CATEGORIES.includes(s);
+}
+function formatChecksList(entries, useColor2) {
+  const idW = Math.max(2, ...entries.map((c2) => c2.id.length));
+  const lines = [];
+  lines.push(`mergegate · ${CHECKS.length} pre-built checks for the common agent-PR failure modes`);
+  lines.push("");
+  let lastCat = null;
+  for (const c2 of entries) {
+    if (c2.category !== lastCat) {
+      if (lastCat !== null)
+        lines.push("");
+      lines.push(bold2(useColor2, c2.category));
+      lastCat = c2.category;
+    }
+    lines.push(`  ${cyan2(useColor2, c2.id.padEnd(idW))}  ${c2.label}`);
+    lines.push(`  ${" ".repeat(idW)}  ${dim3(useColor2, c2.why)}`);
+  }
+  lines.push("");
+  lines.push(dim3(useColor2, "  mergegate checks show <id>   full detail + the gate snippet"));
+  lines.push(dim3(useColor2, "  mergegate checks add  <id>   append it into your mergegate.config.json"));
+  return lines.join(`
+`);
+}
+function formatCheckDetail(c2, useColor2) {
+  const snippet = JSON.stringify({ [c2.gateName]: c2.gate }, null, 2);
+  const lines = [
+    `${cyan2(useColor2, c2.id)}  ${bold2(useColor2, c2.label)}  ${dim3(useColor2, `[${c2.category}]`)}`,
+    "",
+    `  ${c2.why}`,
+    "",
+    `  ${dim3(useColor2, 'Drop this into the "gates" object of mergegate.config.json:')}`,
+    snippet.split(`
+`).map((l) => `  ${l}`).join(`
+`),
+    "",
+    `  ${dim3(useColor2, `Or add it for me:  mergegate checks add ${c2.id}`)}`
+  ];
+  return lines.join(`
+`);
+}
+function findConfigPath2(dir) {
+  for (const name of CONFIG_FILENAMES) {
+    const p = join4(dir, name);
+    if (existsSync4(p))
+      return p;
+  }
+  return null;
+}
+function uniqueGateName(base, existing) {
+  if (!existing.has(base))
+    return base;
+  for (let n = 2;; n++) {
+    const candidate = `${base}-${n}`;
+    if (!existing.has(candidate))
+      return candidate;
+  }
+}
+function runAdd(ids, flags) {
+  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+  if (ids.length === 0) {
+    console.error("mergegate: `checks add` needs at least one check id (see `mergegate checks`).");
+    return 2;
+  }
+  const entries = [];
+  for (const id of ids) {
+    const c2 = findCheck(id);
+    if (!c2) {
+      console.error(`mergegate: unknown check "${id}". Run \`mergegate checks\` to list them.`);
+      return 2;
+    }
+    entries.push(c2);
+  }
+  const path = findConfigPath2(dir);
+  if (!path) {
+    console.error(`mergegate: no config found in ${dir} (looked for ${CONFIG_FILENAMES.join(", ")}). Run \`mergegate init\` first.`);
+    return 2;
+  }
+  let config;
+  try {
+    config = JSON.parse(readFileSync3(path, "utf8"));
+  } catch (e) {
+    console.error(`mergegate: ${path}: invalid JSON — ${e.message}`);
+    return 2;
+  }
+  if (typeof config.gates !== "object" || config.gates === null || Array.isArray(config.gates)) {
+    console.error(`mergegate: ${path}: "gates" must be an object — is this a mergegate config?`);
+    return 2;
+  }
+  const gates = config.gates;
+  const existing = new Set(Object.keys(gates));
+  const force = Boolean(flags.force);
+  const added = [];
+  for (const c2 of entries) {
+    const present = gates[c2.gateName];
+    if (present && present.run === c2.gate.run && !force) {
+      console.log(`• ${c2.id} already present as gate "${c2.gateName}" — skipped.`);
+      continue;
+    }
+    const key = force ? c2.gateName : uniqueGateName(c2.gateName, existing);
+    gates[key] = c2.gate;
+    existing.add(key);
+    added.push(`${c2.id} → gate "${key}"`);
+  }
+  if (added.length === 0) {
+    console.log("Nothing to add.");
+    return 0;
+  }
+  writeFileSync3(path, JSON.stringify(config, null, 2) + `
+`);
+  console.log(`✔ added ${added.length} check(s) to ${path}:`);
+  for (const a of added)
+    console.log(`    ${a}`);
+  console.log(`
+These gates run for every author; agent PRs must pass all of them.`);
+  console.log(`Review the \`run\` command(s), then \`mergegate check\` to try them.`);
+  return 0;
+}
+function cmdChecks(args) {
+  const { _, flags } = parseFlags2(args);
+  const useColor2 = useColorDefault2();
+  const sub = _[0];
+  if (sub === "add")
+    return runAdd(_.slice(1), flags);
+  if (sub === "show") {
+    const id = _[1];
+    if (!id) {
+      console.error("mergegate: `checks show` needs a check id (see `mergegate checks`).");
+      return 2;
+    }
+    const c2 = findCheck(id);
+    if (!c2) {
+      console.error(`mergegate: unknown check "${id}". Run \`mergegate checks\` to list them.`);
+      return 2;
+    }
+    if (flags.json) {
+      console.log(JSON.stringify(c2, null, 2));
+    } else {
+      console.log(formatCheckDetail(c2, useColor2));
+    }
+    return 0;
+  }
+  const catFlag = typeof flags.stack === "string" && flags.stack || typeof flags.category === "string" && flags.category || null;
+  let entries = CHECKS;
+  if (catFlag) {
+    if (!isCategory(catFlag)) {
+      console.error(`mergegate: unknown category "${catFlag}" (known: ${CHECK_CATEGORIES.join(", ")}).`);
+      return 2;
+    }
+    entries = checksByCategory(catFlag);
+  }
+  if (flags.json) {
+    console.log(JSON.stringify(entries, null, 2));
+    return 0;
+  }
+  console.log(formatChecksList(entries, useColor2));
+  return 0;
+}
+
 // src/cli.ts
 var VERSION = "0.1.0";
-function parseFlags2(args) {
+function parseFlags3(args) {
   const _ = [];
   const flags = {};
   for (let i = 0;i < args.length; i++) {
@@ -906,6 +1328,9 @@ COMMANDS
   agents                List the coding agents mergegate detects out of the box.
                         \`--author "<name> <email>"\` probes one author; \`agents check\` audits
                         your repo's recent authors (proves the gate won't block a human); --json.
+  checks                Browse the curated library of pre-built checks for common agent-PR
+                        failure modes. \`checks show <id>\` prints the gate snippet; \`checks add
+                        <id>\` appends it into mergegate.config.json. \`--stack node|go|rust|python\`.
   version               Print version.
   help                  Show this help.
 
@@ -942,7 +1367,7 @@ function buildContext(dir, flags, base) {
     forceClass = "human";
   return { cwd: dir, author, commitMessages, forceClass };
 }
-var useColorDefault2 = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+var useColorDefault3 = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
 function strictGuard(v, flags) {
   if (!v.loosenedGates || v.loosenedGates.length === 0)
     return null;
@@ -969,8 +1394,8 @@ function buildVerdict(dir, flags) {
   return { config, verdict: evaluate(config, ctx) };
 }
 function runCheck2(args) {
-  const { flags } = parseFlags2(args);
-  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+  const { flags } = parseFlags3(args);
+  const dir = resolve5(typeof flags.dir === "string" ? flags.dir : ".");
   if (flags["print-branch"]) {
     try {
       const config = loadConfig(dir);
@@ -1001,7 +1426,7 @@ function runCheck2(args) {
       console.log(formatMarkdown(verdict));
       break;
     case "summary":
-      console.log(formatSummaryText(summarize(verdict), useColorDefault2()));
+      console.log(formatSummaryText(summarize(verdict), useColorDefault3()));
       break;
     default:
       console.log(formatReport(verdict));
@@ -1009,8 +1434,8 @@ function runCheck2(args) {
   return verdict.pass ? 0 : 1;
 }
 function runSummary(args) {
-  const { flags } = parseFlags2(args);
-  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+  const { flags } = parseFlags3(args);
+  const dir = resolve5(typeof flags.dir === "string" ? flags.dir : ".");
   const r = buildVerdict(dir, flags);
   if ("code" in r)
     return r.code;
@@ -1024,7 +1449,7 @@ function runSummary(args) {
   } else if (markdown) {
     console.log(formatSummaryMarkdown(s));
   } else {
-    console.log(formatSummaryText(s, useColorDefault2()));
+    console.log(formatSummaryText(s, useColorDefault3()));
   }
   return r.verdict.pass ? 0 : 1;
 }
@@ -1042,6 +1467,8 @@ function main(argv) {
       return cmdInstallHook(rest);
     case "agents":
       return cmdAgents(rest);
+    case "checks":
+      return cmdChecks(rest);
     case "version":
     case "--version":
     case "-v":

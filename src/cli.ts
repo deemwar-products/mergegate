@@ -7,6 +7,7 @@ import { isGitRepo, headAuthor, branchCommitMessages } from "./git.ts";
 import { cmdInit } from "./commands/init.ts";
 import { cmdInstallHook } from "./commands/hook.ts";
 import { cmdAgents } from "./commands/agents.ts";
+import { cmdChecks } from "./commands/checks.ts";
 import type { AuthorClass, EvalContext, Verdict, MergegateConfig } from "./types.ts";
 
 const VERSION = "0.1.0";
@@ -52,6 +53,9 @@ COMMANDS
   agents                List the coding agents mergegate detects out of the box.
                         \`--author "<name> <email>"\` probes one author; \`agents check\` audits
                         your repo's recent authors (proves the gate won't block a human); --json.
+  checks                Browse the curated library of pre-built checks for common agent-PR
+                        failure modes. \`checks show <id>\` prints the gate snippet; \`checks add
+                        <id>\` appends it into mergegate.config.json. \`--stack node|go|rust|python\`.
   version               Print version.
   help                  Show this help.
 
@@ -204,6 +208,8 @@ export function main(argv: string[]): number {
       return cmdInstallHook(rest);
     case "agents":
       return cmdAgents(rest);
+    case "checks":
+      return cmdChecks(rest);
     case "version":
     case "--version":
     case "-v":
