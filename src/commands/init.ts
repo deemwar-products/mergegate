@@ -47,6 +47,8 @@ export function defaultConfig(stack: Stack): object {
       _comment: "Agent-authored changes must pass EVERY gate. Human changes honor each gate's `required`.",
       agent: { requireAll: true },
       human: { requireAll: false },
+      _fleet: "STEP 1 — teach mergegate YOUR agents. Defaults catch 13 public agents (copilot, cursor, devin, claude-code, …) but NOT your own fleet if it commits under a plain noreply email. List your agents' identities below (matched against \"<name> <email>\", case-insensitive regex). These are ADDED to the defaults.",
+      extraAgentAuthors: [],
     },
   };
 }
@@ -95,8 +97,11 @@ export function cmdInit(args: string[]): number {
   }
 
   console.log("\nNext:");
-  console.log("  1. Review mergegate.config.json — wire build/tests/checks to your real commands.");
-  console.log("  2. `mergegate check` locally to see the verdict.");
-  console.log("  3. `mergegate install-hook` to block pushes to main that aren't green.");
+  console.log("  1. Teach mergegate YOUR agents → set policy.extraAgentAuthors in mergegate.config.json.");
+  console.log("     Defaults catch 13 public agents; your own fleet (plain noreply email) is invisible until you add it.");
+  console.log("     Audit it: `mergegate agents check` — proves who'd be gated as an agent vs. stay human.");
+  console.log("  2. Review the gates — wire build/tests/checks to your real commands.");
+  console.log("  3. `mergegate check` locally to see the verdict.");
+  console.log("  4. `mergegate install-hook` to block pushes to main that aren't green.");
   return 0;
 }

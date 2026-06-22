@@ -109,7 +109,7 @@ var AGENTS = [
   {
     id: "deemwar-agent",
     label: "deemwar fleet agent",
-    match: ["agents@deemwar\\.com"],
+    match: ["(?<![\\w.+-])(?!admin@deemwar\\.com)[\\w.+-]+@deemwar\\.com"],
     url: "https://deemwar.com"
   },
   {
@@ -133,6 +133,7 @@ function explainMatch(author) {
 var CONFIG_FILENAMES = ["mergegate.config.json", ".mergegate.json"];
 var DEFAULT_POLICY = {
   agentAuthors: DEFAULT_AGENT_AUTHORS,
+  extraAgentAuthors: [],
   agent: { requireAll: true },
   human: { requireAll: false },
   identities: []
@@ -220,8 +221,10 @@ function parseConfig(raw, source = "config") {
     }
   }
   const policyIn = obj.policy ?? {};
+  const baseAuthors = policyIn.agentAuthors ?? DEFAULT_POLICY.agentAuthors;
+  const extraAuthors = policyIn.extraAgentAuthors ?? [];
   const policy = {
-    agentAuthors: policyIn.agentAuthors ?? DEFAULT_POLICY.agentAuthors,
+    agentAuthors: [...baseAuthors, ...extraAuthors],
     agent: { requireAll: policyIn.agent?.requireAll ?? DEFAULT_POLICY.agent.requireAll },
     human: { requireAll: policyIn.human?.requireAll ?? DEFAULT_POLICY.human.requireAll },
     identities: parseIdentities(policyIn.identities, gateNames, source)
@@ -639,7 +642,9 @@ function defaultConfig(stack) {
     policy: {
       _comment: "Agent-authored changes must pass EVERY gate. Human changes honor each gate's `required`.",
       agent: { requireAll: true },
-      human: { requireAll: false }
+      human: { requireAll: false },
+      _fleet: `STEP 1 — teach mergegate YOUR agents. Defaults catch 13 public agents (copilot, cursor, devin, claude-code, …) but NOT your own fleet if it commits under a plain noreply email. List your agents' identities below (matched against "<name> <email>", case-insensitive regex). These are ADDED to the defaults.`,
+      extraAgentAuthors: []
     }
   };
 }
@@ -685,9 +690,12 @@ function cmdInit(args) {
   }
   console.log(`
 Next:`);
-  console.log("  1. Review mergegate.config.json — wire build/tests/checks to your real commands.");
-  console.log("  2. `mergegate check` locally to see the verdict.");
-  console.log("  3. `mergegate install-hook` to block pushes to main that aren't green.");
+  console.log("  1. Teach mergegate YOUR agents → set policy.extraAgentAuthors in mergegate.config.json.");
+  console.log("     Defaults catch 13 public agents; your own fleet (plain noreply email) is invisible until you add it.");
+  console.log("     Audit it: `mergegate agents check` — proves who'd be gated as an agent vs. stay human.");
+  console.log("  2. Review the gates — wire build/tests/checks to your real commands.");
+  console.log("  3. `mergegate check` locally to see the verdict.");
+  console.log("  4. `mergegate install-hook` to block pushes to main that aren't green.");
   return 0;
 }
 

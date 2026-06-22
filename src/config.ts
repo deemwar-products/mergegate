@@ -12,6 +12,7 @@ export const CONFIG_FILENAMES = ["mergegate.config.json", ".mergegate.json"];
 
 export const DEFAULT_POLICY: Required<PolicyConfig> = {
   agentAuthors: DEFAULT_AGENT_AUTHORS,
+  extraAgentAuthors: [],
   agent: { requireAll: true },
   human: { requireAll: false },
   identities: [],
@@ -100,8 +101,13 @@ export function parseConfig(raw: unknown, source = "config"): MergegateConfig {
   }
 
   const policyIn = (obj.policy as Record<string, unknown>) ?? {};
+  // Base detection: an explicit `agentAuthors` REPLACES the registry; otherwise use defaults.
+  // `extraAgentAuthors` is always MERGED on top — the no-footgun way to add your fleet without
+  // losing the 13 built-in public agents (the onboarding step the 2026-06-22 dogfood surfaced).
+  const baseAuthors = (policyIn.agentAuthors as string[]) ?? DEFAULT_POLICY.agentAuthors;
+  const extraAuthors = (policyIn.extraAgentAuthors as string[]) ?? [];
   const policy: PolicyConfig = {
-    agentAuthors: (policyIn.agentAuthors as string[]) ?? DEFAULT_POLICY.agentAuthors,
+    agentAuthors: [...baseAuthors, ...extraAuthors],
     agent: { requireAll: (policyIn.agent as PolicyConfig["agent"])?.requireAll ?? DEFAULT_POLICY.agent.requireAll },
     human: { requireAll: (policyIn.human as PolicyConfig["human"])?.requireAll ?? DEFAULT_POLICY.human.requireAll },
     identities: parseIdentities(policyIn.identities, gateNames, source),

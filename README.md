@@ -70,6 +70,22 @@ mergegate install-hook    # block local pushes to main that aren't green
 `mergegate init` detects your stack (npm / pnpm / bun / cargo / go / python) and wires
 sensible `build` / `tests` / `checks` commands — review them, then you're gated.
 
+**Step 1 once it's scaffolded: teach mergegate _your_ agents.** The defaults catch 13
+public agents (Copilot, Cursor, Devin, Claude Code, Codex, …) — but if your own fleet
+commits under a plain `team@company.com` noreply (no `[bot]` login, no vendor domain),
+mergegate can't see it's an agent and it gets the lighter human bar. Add your fleet's
+commit identity — this is _added_ to the defaults, not a replacement:
+
+```jsonc
+// mergegate.config.json
+"policy": {
+  "extraAgentAuthors": ["bot@acme\\.dev", "ci@acme\\.com"]  // matched against "<name> <email>", case-insensitive regex
+}
+```
+
+Then prove it: `mergegate agents check` audits your repo's recent authors and shows
+exactly who'd be gated as an agent vs. who stays human — so you catch a leak before it ships.
+
 ## How it works
 
 ```
@@ -116,7 +132,8 @@ sensible `build` / `tests` / `checks` commands — review them, then you're gate
 | `gates.<name>.builtin` | `"spec"` — every commit on the branch must match a spec/issue pattern. |
 | `gates.<name>.pattern` | Override the spec regex (default matches `spec 28`, `#112`, `PROJ-7`). |
 | `gates.<name>.required` | Whether the gate blocks human-authored changes (agents always require all). |
-| `policy.agentAuthors` | Patterns (regex) that classify an author as an agent. |
+| `policy.extraAgentAuthors` | **Your fleet's identities — added to the built-in registry.** The knob to set first (regex vs. `"<name> <email>"`). |
+| `policy.agentAuthors` | Patterns (regex) that classify an author as an agent. Setting this *replaces* the built-in registry — prefer `extraAgentAuthors` unless you mean to redefine detection wholesale. |
 | `policy.agent.requireAll` | Agent PRs must pass every gate (default `true`). |
 | `policy.human.requireAll` | Force the strict bar for humans too (default `false`). |
 
@@ -202,13 +219,23 @@ $ mergegate agents check
   agent  copilot-swe-agent <bot@users.noreply.github.com>  → copilot-swe-agent /copilot-swe-agent/
 ```
 
-**Missing an agent?** Add one entry to `src/agents.ts` (anchored to a `[bot]` login or
-noreply domain — see the safety rule at the top of the file) and open a PR. The registry
-is community-maintained; new agents ship every month.
+**Your own fleet missing?** Don't edit source — add its commit identity to
+`policy.extraAgentAuthors` in your config (see [Quick start](#quick-start)). That's the
+right path for an org's private agents; it merges on top of the built-in registry.
+
+**A _public_ agent missing?** Add one entry to `src/agents.ts` (anchored to a `[bot]`
+login or noreply domain — see the safety rule at the top of the file) and open a PR. The
+registry is community-maintained; new agents ship every month.
 
 ## Running an agent fleet?
 
 mergegate is the gate we run over our own fleet of autonomous agents, opened up as OSS.
+We dogfood it honestly: we pointed it at our own 19 agent-built repos and found our top
+committer is a bot with 170+ commits that the *defaults* waved through as human — because
+it commits under a plain noreply email, not a `[bot]` login. That's the whole point. GitHub
+can't see *who* opened a PR, and even a tool that can won't help until it knows *your*
+agents' faces. The fix was one line of `extraAgentAuthors` (above) — set yours first.
+
 If your team is drowning in agent-authored PRs — or you'd want this as a hosted,
 per-repo gate with a dashboard of gate outcomes — tell us what you'd need:
 

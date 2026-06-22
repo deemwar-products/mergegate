@@ -36,8 +36,14 @@ export interface IdentityRule {
 }
 
 export interface PolicyConfig {
-  /** Substring/regex patterns matched against "<name> <email>" to classify an author as an agent. */
+  /** Substring/regex patterns matched against "<name> <email>" to classify an author as an agent.
+   *  Setting this REPLACES the built-in registry (the 13 public agents) — use only to fully
+   *  redefine detection. To ADD your org's own fleet identities without losing the defaults,
+   *  use `extraAgentAuthors` instead. */
   agentAuthors?: string[];
+  /** Extra agent-author patterns MERGED onto the defaults (or onto `agentAuthors` if set).
+   *  The right knob for "teach mergegate my fleet's commit identity" — e.g. ["bot@acme\\.dev"]. */
+  extraAgentAuthors?: string[];
   /** Agent-authored changes: require every gate to pass (the core mergegate promise). Default true. */
   agent?: { requireAll?: boolean };
   /** Human-authored changes: honor each gate's own `required` flag. Default requireAll false. */

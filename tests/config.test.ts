@@ -22,6 +22,24 @@ describe("parseConfig", () => {
     expect(cfg.policy?.human?.requireAll).toBe(true);
   });
 
+  // The no-footgun onboarding knob (dogfood 2026-06-22): adding your fleet must NOT drop
+  // the 13 built-in public-agent patterns.
+  test("extraAgentAuthors MERGES onto the defaults (keeps built-ins)", () => {
+    const cfg = parseConfig({
+      gates: { build: { run: "true" } },
+      policy: { extraAgentAuthors: ["bot@acme\\.dev"] },
+    });
+    expect(cfg.policy?.agentAuthors).toEqual([...DEFAULT_AGENT_AUTHORS, "bot@acme\\.dev"]);
+  });
+
+  test("extraAgentAuthors MERGES onto an explicit agentAuthors override", () => {
+    const cfg = parseConfig({
+      gates: { build: { run: "true" } },
+      policy: { agentAuthors: ["mybot"], extraAgentAuthors: ["bot@acme\\.dev"] },
+    });
+    expect(cfg.policy?.agentAuthors).toEqual(["mybot", "bot@acme\\.dev"]);
+  });
+
   test("rejects non-object", () => {
     expect(() => parseConfig(null)).toThrow(ConfigError);
     expect(() => parseConfig([])).toThrow(ConfigError);

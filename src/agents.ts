@@ -49,8 +49,15 @@ export const AGENTS: AgentEntry[] = [
     match: ["sweep-ai\\[bot\\]", "sweep\\[bot\\]"], url: "https://sweep.dev" },
   { id: "aider", label: "Aider",
     match: ["aider\\[bot\\]"], url: "https://aider.chat" },
+  // deemwar's own fleet commits under per-line noreply addresses — io@, agents@,
+  // merchreel@, ossengine@, mobile@, tuneforge@, builder@, bookproducts@, … — a set
+  // that GROWS every time a new line spins up. Matching only one address let the
+  // dominant identity (io@, 170+ commits) slip through as human (dogfood 2026-06-22).
+  // So we anchor to the whole org noreply domain, with one carve-out: admin@deemwar.com
+  // is the human owner/admin account and must stay human. (Other orgs do the same for
+  // their fleet via `policy.agentAuthors` in config — this entry is the worked example.)
   { id: "deemwar-agent", label: "deemwar fleet agent",
-    match: ["agents@deemwar\\.com"], url: "https://deemwar.com" },
+    match: ["(?<![\\w.+-])(?!admin@deemwar\\.com)[\\w.+-]+@deemwar\\.com"], url: "https://deemwar.com" },
   // Generic catch-all: GitHub Apps / bot identities always end in "[bot]" — a suffix
   // a human account cannot register. Kept LAST so specific entries label first.
   { id: "generic-bot", label: "Generic [bot] account",

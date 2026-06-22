@@ -49,4 +49,40 @@ describe("agent registry", () => {
     expect(e?.pattern).toBe("noreply@anthropic\\.com");
     expect(explainMatch("Jordan Lee <jordan@example.com>")).toBeNull();
   });
+
+  // Regression for the 2026-06-22 dogfood: pointed at deemwar's own 19 product repos,
+  // the bundled defaults waved 6 of 7 fleet identities through as HUMAN — including the
+  // dominant io@ (170+ commits) — because deemwar-agent matched only agents@deemwar.com.
+  // The fleet fingerprint, locked so a narrowed pattern fails CI. See docs/dogfood-2026-06-22.md.
+  describe("deemwar fleet identities (dogfood 2026-06-22)", () => {
+    test("every live fleet line is gated as an agent", () => {
+      for (const email of [
+        "io@deemwar.com",          // 170+ commits — the leak that started this
+        "agents@deemwar.com",
+        "merchreel@deemwar.com",
+        "ossengine@deemwar.com",
+        "mobile@deemwar.com",
+        "tuneforge@deemwar.com",
+        "deemwar@deemwar.com",
+        "builder@deemwar.com",
+        "bookproducts@deemwar.com",
+        "somenewline@deemwar.com", // a future line must be caught too — fix the class, not the instances
+      ]) {
+        const author = `fleet <${email}>`;
+        expect(matchAgent(author)?.id).toBe("deemwar-agent");
+        expect(classifyAuthor(author, DEFAULT_AGENT_AUTHORS)).toBe("agent");
+      }
+    });
+
+    test("the human admin/owner on the same domain stays human", () => {
+      for (const human of [
+        "deemwar admin <admin@deemwar.com>",
+        "Admin <ADMIN@DEEMWAR.COM>",       // case-insensitive carve-out
+        "Muthukumaran <muthuishere@gmail.com>",
+      ]) {
+        expect(matchAgent(human)?.id).not.toBe("deemwar-agent");
+        expect(classifyAuthor(human, DEFAULT_AGENT_AUTHORS)).toBe("human");
+      }
+    });
+  });
 });
