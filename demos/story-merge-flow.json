@@ -1,0 +1,64 @@
+{
+  "name": "mergegate-merge-flow",
+  "size": "1920x1080",
+  "fps": 30,
+  "theme": "/Users/muthuishere/muthu/deemwarworkspace/auto-demo/themes/mergegate-red.json",
+  "voiceover": {
+    "engine": "gemini",
+    "parts": [
+      { "at": "card:stakes", "text": "Agents open pull requests all day now. The good ones are green. The rest just look green." },
+      { "at": "card:turn",   "text": "mergegate puts one gate in front of main. An agent's change only lands if it is provably done." },
+      { "at": "vhs:merge",   "text": "An autonomous agent pushes its change straight at main. mergegate runs every gate, finds a missing spec and a failing test, and refuses the merge on the spot. The agent fixes it properly, references the spec — and the very same push lands clean." },
+      { "at": "card:outro",  "text": "mergegate. Provably done, or it doesn't touch main. From deemwar." }
+    ]
+  },
+  "cards": [
+    { "id": "stakes", "title": "Agents open PRs all day now.", "subtitle": "the good ones are green — the rest just look green", "style": "stakes", "duration": 6.5 },
+    { "id": "turn",   "title": "One gate in front of main.", "subtitle": "an agent's change only lands if it's provably done", "style": "brand", "duration": 6.5 },
+    { "id": "outro",  "title": "deemwar.", "subtitle": "provably done, or it doesn't touch main", "style": "close", "duration": 6.5 }
+  ],
+  "vhs": [
+    {
+      "id": "merge",
+      "settings": { "FontSize": 26, "TypingSpeed": "30ms", "Padding": 50, "Width": 1500, "Height": 1000 },
+      "lines": [
+        "Hide",
+        "Type \"source ~/mergegate/demos/setup-sandbox.sh hook\"",
+        "Enter",
+        "Sleep 2.5s",
+        "Show",
+        "Type \"# an autonomous agent pushes its PR straight at main\"",
+        "Enter",
+        "Sleep 700ms",
+        "Type \"git log --oneline -1\"",
+        "Enter",
+        "Sleep 1.6s",
+        "Type \"git push origin main\"",
+        "Enter",
+        "Sleep 6s",
+        "Type \"# blocked at the wall: no spec, tests red. now fix it properly...\"",
+        "Enter",
+        "Sleep 1.8s",
+        "Type \"echo 'exports.retries = 5;' > retry.js\"",
+        "Enter",
+        "Sleep 700ms",
+        "Hide",
+        "Type \"sed -i '' 's/!== 3/!== 5/; s/expected 3/expected 5/' retry.test.js\"",
+        "Enter",
+        "Show",
+        "Type \"git commit -aqm 'fix: raise retry ceiling to 5 (spec 14)'\"",
+        "Enter",
+        "Sleep 1.8s",
+        "Type \"git push origin main\"",
+        "Enter",
+        "Sleep 9s"
+      ]
+    }
+  ],
+  "captions": [
+    { "segment": "vhs:merge", "text": "An agent's PR, pushed straight at main.", "from": 0.5, "to": 4.0 },
+    { "segment": "vhs:merge", "text": "✘ BLOCKED — no spec, tests red. The merge is refused.", "from": 3.5, "to": 7.5 },
+    { "segment": "vhs:merge", "text": "Fixed properly, spec referenced → the same push LANDS on main.", "from": 13.0, "to": 18.3 }
+  ],
+  "timeline": ["card:stakes", "card:turn", "vhs:merge", "card:outro"]
+}
