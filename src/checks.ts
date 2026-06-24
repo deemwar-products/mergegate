@@ -64,7 +64,9 @@ const HYGIENE: CheckEntry[] = [
     gateName: "no-private-keys",
     gate: {
       description: "Fail if a PEM private-key header is committed anywhere in the tree.",
-      run: "git grep -nE 'BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY' -- . && exit 1 || exit 0",
+      // ENCRYPTED is a real, leak-worthy header (PKCS#8 'BEGIN ENCRYPTED PRIVATE KEY')
+      // — a passphrase isn't a safe place to commit a key. Keep it in the alternation.
+      run: "git grep -nE 'BEGIN (RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY' -- . && exit 1 || exit 0",
       required: true,
     },
   },

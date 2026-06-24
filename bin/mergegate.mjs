@@ -890,7 +890,7 @@ var HYGIENE = [
     gateName: "no-private-keys",
     gate: {
       description: "Fail if a PEM private-key header is committed anywhere in the tree.",
-      run: "git grep -nE 'BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY' -- . && exit 1 || exit 0",
+      run: "git grep -nE 'BEGIN (RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY' -- . && exit 1 || exit 0",
       required: true
     }
   },

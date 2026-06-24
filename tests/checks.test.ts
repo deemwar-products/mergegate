@@ -94,6 +94,8 @@ describe("grep gate commands actually fire", () => {
     ["no-focused-tests-js", { "a.test.js": "describe.only('x', () => {})\n" }, { "a.test.js": "describe('x', () => {})\n" }],
     ["no-breakpoint-py", { "a.py": "import pdb\nx = 1\n" }, { "a.py": "x = 1\n" }],
     ["no-aws-keys", { "a.txt": "key=AKIAIOSFODNN7EXAMPLE\n" }, { "a.txt": "key=redacted\n" }],
+    // Encrypted PKCS#8 header — the variant the pre-ENCRYPTED regex silently let through.
+    ["no-private-keys", { "id.pem": "-----BEGIN ENCRYPTED PRIVATE KEY-----\n" }, { "id.pem": "public cert only\n" }],
   ];
 
   for (const [id, dirty, clean] of cases) {
