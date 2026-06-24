@@ -20,11 +20,16 @@ export function headAuthor(cwd: string): string {
 /**
  * Commit subjects on the current branch that are not yet on `base`.
  * Falls back to the last commit if the base ref can't be resolved (e.g. fresh repo).
+ *
+ * `--no-merges` is deliberate: a `pull_request` checkout is a synthetic "Merge <head>
+ * into <base>" commit that carries no spec/issue reference, and feature branches that
+ * merge `main` back in accrue integration merges too. Those aren't authored work, so
+ * gating them (e.g. the spec gate) would false-positive on every Action-driven PR.
  */
 export function branchCommitMessages(cwd: string, base: string): string[] {
   const merge = git(["merge-base", base, "HEAD"], cwd);
   if (merge) {
-    const out = git(["log", `${merge}..HEAD`, "--pretty=%s"], cwd);
+    const out = git(["log", `${merge}..HEAD`, "--no-merges", "--pretty=%s"], cwd);
     // A non-empty incoming range is the set of commits this branch introduces.
     if (out !== null && out.length > 0) return out.split("\n");
     // Empty range = on/at the base branch (no divergence). For local ergonomics,

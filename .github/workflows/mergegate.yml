@@ -16,6 +16,9 @@ jobs:
       - name: Build the CLI the action runs
         run: |
           curl -fsSL https://bun.sh/install | bash
+          # The action's build/tests/checks gates shell out to bare `bun`/`bunx`,
+          # so bun must stay on PATH for the `uses: ./` step below — not just here.
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
           ~/.bun/bin/bun install --frozen-lockfile
           ~/.bun/bin/bun build ./src/cli.ts --target=node --outfile=bin/mergegate.mjs
       - uses: ./
