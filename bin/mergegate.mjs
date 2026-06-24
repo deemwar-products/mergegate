@@ -575,7 +575,7 @@ function headAuthor(cwd) {
 function branchCommitMessages(cwd, base) {
   const merge = git(["merge-base", base, "HEAD"], cwd);
   if (merge) {
-    const out = git(["log", `${merge}..HEAD`, "--pretty=%s"], cwd);
+    const out = git(["log", `${merge}..HEAD`, "--no-merges", "--pretty=%s"], cwd);
     if (out !== null && out.length > 0)
       return out.split(`
 `);
