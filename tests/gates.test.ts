@@ -28,6 +28,21 @@ describe("shell run gates", () => {
     expect(r.required).toBe(false);
     expect(r.status).toBe("fail");
   });
+
+  test("mergegate's own MG_* action env does not leak into the gate command", () => {
+    // The action sets MG_AUTHOR/MG_BASE/MG_PR/… ; a gate command (e.g. a project's
+    // test suite that itself drives mergegate) must not inherit them.
+    const prev = process.env.MG_AUTHOR;
+    process.env.MG_AUTHOR = "leaked-agent <bot@evil.dev>";
+    try {
+      // `test -z` exits 0 only if $MG_AUTHOR is empty — i.e. it was scrubbed.
+      const r = runGate("tests", { run: 'test -z "$MG_AUTHOR"' }, ctx());
+      expect(r.status).toBe("pass");
+    } finally {
+      if (prev === undefined) delete process.env.MG_AUTHOR;
+      else process.env.MG_AUTHOR = prev;
+    }
+  });
 });
 
 describe("builtin spec gate", () => {

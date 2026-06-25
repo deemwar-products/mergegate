@@ -21,8 +21,6 @@ jobs:
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
           ~/.bun/bin/bun install --frozen-lockfile
           ~/.bun/bin/bun build ./src/cli.ts --target=node --outfile=bin/mergegate.mjs
-      - name: DEBUG — surface bun test output (temporary, #24881)
-        run: ~/.bun/bin/bun test 2>&1 | tail -80
       - uses: ./
         with:
           base: origin/main
