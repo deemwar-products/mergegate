@@ -286,6 +286,12 @@ function tail(s, lines = 20) {
   return arr.slice(-lines).join(`
 `);
 }
+function gateEnv() {
+  const env = { ...process.env };
+  for (const k of ["MG_BIN", "MG_BASE", "MG_AUTHOR", "MG_COMMENT", "MG_PR"])
+    delete env[k];
+  return env;
+}
 function evalSpecGate(gate, ctx) {
   const pattern = gate.pattern ?? DEFAULT_SPEC_PATTERN;
   let re;
@@ -326,6 +332,7 @@ function runGate(name, gate, ctx) {
     cwd: ctx.cwd,
     shell: true,
     encoding: "utf8",
+    env: gateEnv(),
     timeout: gate.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxBuffer: 16 * 1024 * 1024
   });

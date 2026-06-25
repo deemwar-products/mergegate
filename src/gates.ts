@@ -11,6 +11,19 @@ function tail(s: string, lines = 20): string {
   return arr.slice(-lines).join("\n");
 }
 
+/**
+ * Env for a gate command. mergegate's own action-internal vars (set by
+ * action/entrypoint.sh) must NOT leak into the gate subprocess — a project's
+ * own `tests`/`build`/`checks` command can be sensitive to these names, and an
+ * inherited MG_* would silently change its behaviour (e.g. a test suite that
+ * itself drives mergegate would pick up the action's author/base/PR). Strip them.
+ */
+function gateEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const k of ["MG_BIN", "MG_BASE", "MG_AUTHOR", "MG_COMMENT", "MG_PR"]) delete env[k];
+  return env;
+}
+
 /** Evaluate the built-in spec gate: every commit on the branch must reference a spec/issue. */
 export function evalSpecGate(gate: GateConfig, ctx: EvalContext): { ok: boolean; reason: string } {
   const pattern = gate.pattern ?? DEFAULT_SPEC_PATTERN;
@@ -58,6 +71,7 @@ export function runGate(name: GateName, gate: GateConfig, ctx: EvalContext): Gat
     cwd: ctx.cwd,
     shell: true,
     encoding: "utf8",
+    env: gateEnv(),
     timeout: gate.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxBuffer: 16 * 1024 * 1024,
   });
