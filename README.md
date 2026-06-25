@@ -49,22 +49,29 @@ you can adopt in two commands.
 
 ## Install
 
-```sh
-# zero-install, one-off
-bunx mergegate check          # or: npx mergegate check
+Two ways to run it today — both straight from GitHub, no registry needed:
 
-# per repo
-bun add -d mergegate          # or: npm i -D mergegate
+```sh
+# 1. Zero-install CLI, one-off — runs the published v0.1.0 tag from GitHub:
+npx github:deemwar-products/mergegate#v0.1.0 check
+#   (omit "#v0.1.0" to track main; bunx works too: bunx github:deemwar-products/mergegate#v0.1.0 check)
+
+# 2. As a GitHub Action — one line in your PR workflow (see "In CI" below):
+#    uses: deemwar-products/mergegate@v0.1.0
 ```
 
 Requires Node 18+ (or Bun). No runtime dependencies.
 
+> **npm registry (`npx mergegate` / `npm i -D mergegate`):** coming once the package is
+> published to npm. Until then use the `github:` install above — it runs the exact same CLI.
+
 ## Quick start
 
 ```sh
-mergegate init            # scaffold mergegate.config.json + a GitHub Actions gate
-mergegate check           # run every gate, print the verdict, exit non-zero if BLOCKED
-mergegate install-hook    # block local pushes to main that aren't green
+MG="npx github:deemwar-products/mergegate#v0.1.0"
+$MG init            # scaffold mergegate.config.json + a GitHub Actions gate
+$MG check           # run every gate, print the verdict, exit non-zero if BLOCKED
+$MG install-hook    # block local pushes to main that aren't green
 ```
 
 `mergegate init` detects your stack (npm / pnpm / bun / cargo / go / python) and wires
@@ -155,7 +162,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: deemwar/mergegate@v0   # auto-detects the agent author, holds it to every gate
+      - uses: deemwar-products/mergegate@v0.1.0   # auto-detects the agent author, holds it to every gate
 ```
 
 The Action runs the gate keyed on the PR author, **upserts the verdict as a PR comment**

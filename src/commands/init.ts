@@ -30,7 +30,7 @@ export function detectStack(dir: string): Stack {
 
 export function defaultConfig(stack: Stack): object {
   return {
-    $schema: "https://github.com/deemwar/mergegate/schema.json",
+    $schema: "https://github.com/deemwar-products/mergegate/schema.json",
     version: 1,
     protectedBranch: "main",
     gates: {
@@ -69,7 +69,7 @@ jobs:
         with:
           fetch-depth: 0 # mergegate needs branch history for the spec gate
       # One line. Auto-detects the agent author and holds it to every gate.
-      - uses: deemwar/mergegate@v0
+      - uses: deemwar-products/mergegate@v0.1.0
 `;
 
 export function cmdInit(args: string[]): number {

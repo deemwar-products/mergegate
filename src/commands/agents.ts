@@ -52,7 +52,7 @@ export function formatAgentsList(useColor: boolean): string {
   }
   lines.push("");
   lines.push(dim(useColor, "  Add yours (one entry, anchored to a [bot] login or noreply domain):"));
-  lines.push(dim(useColor, "  https://github.com/deemwar/mergegate  → edit src/agents.ts"));
+  lines.push(dim(useColor, "  https://github.com/deemwar-products/mergegate  → edit src/agents.ts"));
   return lines.join("\n");
 }
 

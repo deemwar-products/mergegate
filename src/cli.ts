@@ -69,7 +69,7 @@ OPTIONS (check / gate)
   --format <fmt>        Output format: text (default) | json | markdown | summary.
   --json                Shorthand for --format json.
 
-Docs: https://github.com/deemwar/mergegate`;
+Docs: https://github.com/deemwar-products/mergegate`;
 
 function buildContext(dir: string, flags: Record<string, string | boolean>, base: string): EvalContext {
   let author: string;

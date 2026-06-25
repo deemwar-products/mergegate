@@ -633,7 +633,7 @@ function detectStack(dir) {
 }
 function defaultConfig(stack) {
   return {
-    $schema: "https://github.com/deemwar/mergegate/schema.json",
+    $schema: "https://github.com/deemwar-products/mergegate/schema.json",
     version: 1,
     protectedBranch: "main",
     gates: {
@@ -671,7 +671,7 @@ jobs:
         with:
           fetch-depth: 0 # mergegate needs branch history for the spec gate
       # One line. Auto-detects the agent author and holds it to every gate.
-      - uses: deemwar/mergegate@v0
+      - uses: deemwar-products/mergegate@v0.1.0
 `;
 function cmdInit(args) {
   const dirArg = args.find((a) => !a.startsWith("--"));
@@ -813,7 +813,7 @@ function formatAgentsList(useColor2) {
   }
   lines.push("");
   lines.push(dim2(useColor2, "  Add yours (one entry, anchored to a [bot] login or noreply domain):"));
-  lines.push(dim2(useColor2, "  https://github.com/deemwar/mergegate  → edit src/agents.ts"));
+  lines.push(dim2(useColor2, "  https://github.com/deemwar-products/mergegate  → edit src/agents.ts"));
   return lines.join(`
 `);
 }
@@ -1351,7 +1351,7 @@ OPTIONS (check / gate)
   --format <fmt>        Output format: text (default) | json | markdown | summary.
   --json                Shorthand for --format json.
 
-Docs: https://github.com/deemwar/mergegate`;
+Docs: https://github.com/deemwar-products/mergegate`;
 function buildContext(dir, flags, base) {
   let author;
   let commitMessages;
