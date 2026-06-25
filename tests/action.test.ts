@@ -17,12 +17,17 @@ function sandbox(author: { name: string; email: string }, lintExit: number, comm
   writeFileSync(join(dir, "package.json"), JSON.stringify({
     name: "s", scripts: { build: "echo ok", test: "echo ok", lint: `exit ${lintExit}` },
   }));
+  // Gate commands are plain shell (echo / exit), NOT `npm run …`: mergegate's own
+  // action runs `bun test` in a context where `npm` is not on PATH, so an
+  // npm-dependent fixture failed CI even though the scenario under test is purely
+  // identity policy (required gates pass; the optional check's exit drives the
+  // agent-blocks / human-waives split). Shell builtins are always present. (#24881)
   writeFileSync(join(dir, "mergegate.config.json"), JSON.stringify({
     version: 1,
     gates: {
-      build: { run: "npm run build", required: true },
-      tests: { run: "npm test", required: true },
-      checks: { run: "npm run lint", required: false },
+      build: { run: "echo ok", required: true },
+      tests: { run: "echo ok", required: true },
+      checks: { run: `exit ${lintExit}`, required: false },
     },
     policy: { agent: { requireAll: true }, human: { requireAll: false } },
   }));
