@@ -16,6 +16,7 @@ export const DEFAULT_POLICY: Required<PolicyConfig> = {
   agent: { requireAll: true },
   human: { requireAll: false },
   identities: [],
+  behavioralSignals: true,
 };
 
 export class ConfigError extends Error {}
@@ -111,6 +112,8 @@ export function parseConfig(raw: unknown, source = "config"): MergegateConfig {
     agent: { requireAll: (policyIn.agent as PolicyConfig["agent"])?.requireAll ?? DEFAULT_POLICY.agent.requireAll },
     human: { requireAll: (policyIn.human as PolicyConfig["human"])?.requireAll ?? DEFAULT_POLICY.human.requireAll },
     identities: parseIdentities(policyIn.identities, gateNames, source),
+    // On by default; an explicit `false` opts out of commit-trailer classification.
+    behavioralSignals: typeof policyIn.behavioralSignals === "boolean" ? policyIn.behavioralSignals : DEFAULT_POLICY.behavioralSignals,
   };
 
   return {

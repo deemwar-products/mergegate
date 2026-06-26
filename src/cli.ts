@@ -3,7 +3,7 @@ import { loadConfig, ConfigError } from "./config.ts";
 import { evaluate } from "./verdict.ts";
 import { formatReport, formatJson, formatMarkdown } from "./report.ts";
 import { summarize, formatSummaryText, formatSummaryJson, formatSummaryMarkdown } from "./summary.ts";
-import { isGitRepo, headAuthor, branchCommitMessages } from "./git.ts";
+import { isGitRepo, headAuthor, branchCommitMessages, branchCommitTexts } from "./git.ts";
 import { cmdInit } from "./commands/init.ts";
 import { cmdInstallHook } from "./commands/hook.ts";
 import { cmdAgents } from "./commands/agents.ts";
@@ -81,15 +81,18 @@ function buildContext(dir: string, flags: Record<string, string | boolean>, base
   } else {
     author = "unknown <unknown>";
   }
+  let commitTexts: string[];
   if (isGitRepo(dir)) {
     commitMessages = branchCommitMessages(dir, base);
+    commitTexts = branchCommitTexts(dir, base);
   } else {
     commitMessages = [];
+    commitTexts = [];
   }
   let forceClass: AuthorClass | undefined;
   if (flags.agent) forceClass = "agent";
   if (flags.human) forceClass = "human";
-  return { cwd: dir, author, commitMessages, forceClass };
+  return { cwd: dir, author, commitMessages, commitTexts, forceClass };
 }
 
 const useColorDefault = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;

@@ -39,6 +39,24 @@ export function branchCommitMessages(cwd: string, base: string): string[] {
   return last ? [last] : [];
 }
 
+/**
+ * Like {@link branchCommitMessages}, but each entry is the FULL message (subject + body)
+ * — needed for behavioral classification, since agent attribution trailers
+ * (`Co-Authored-By: …`) live in the body the subject-only form drops. Commits are
+ * NUL-separated (`-z`) because a body is itself multi-line. Same range + fallback logic.
+ */
+export function branchCommitTexts(cwd: string, base: string): string[] {
+  const split = (out: string | null): string[] =>
+    out ? out.split("\0").map((s) => s.trim()).filter((s) => s.length > 0) : [];
+  const merge = git(["merge-base", base, "HEAD"], cwd);
+  if (merge) {
+    const out = git(["log", `${merge}..HEAD`, "--no-merges", "-z", "--pretty=%B"], cwd);
+    const texts = split(out);
+    if (texts.length > 0) return texts;
+  }
+  return split(git(["log", "-1", "-z", "--pretty=%B"], cwd));
+}
+
 export function currentBranch(cwd: string): string | null {
   return git(["rev-parse", "--abbrev-ref", "HEAD"], cwd);
 }

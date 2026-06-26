@@ -26,6 +26,9 @@ export function formatReport(v: Verdict): string {
   const classTag = v.authorClass === "agent" ? yellow("agent") : "human";
   const rule = v.appliedRule ? dim(` · policy: ${v.appliedRule}`) : "";
   lines.push(bold("mergegate") + dim(` · guarding ${v.protectedBranch} · author: ${v.author} [${classTag}]`) + rule);
+  if (v.behavioralSignal) {
+    lines.push(yellow(`  ⓘ gated as agent by commit signal: ${v.behavioralSignal}`));
+  }
   if (v.loosenedGates && v.loosenedGates.length > 0) {
     lines.push(yellow(`  ⚠ identity rule "${v.appliedRule}" relaxed ${v.loosenedGates.length} agent gate(s): ${v.loosenedGates.join(", ")}`));
   }
@@ -83,6 +86,10 @@ export function formatMarkdown(v: Verdict): string {
   }
   lines.push("");
   lines.push(`**Author:** ${v.author} ${classTag}`);
+  if (v.behavioralSignal) {
+    lines.push("");
+    lines.push(`> ℹ️ Gated as **agent** by a commit signal: ${v.behavioralSignal}`);
+  }
   lines.push("");
   lines.push("| Gate | Status | Detail |");
   lines.push("|---|---|---|");
