@@ -119,6 +119,13 @@ var AGENTS = [
   }
 ];
 var DEFAULT_AGENT_AUTHORS = AGENTS.flatMap((a) => a.match);
+function matchAgent(author) {
+  for (const a of AGENTS) {
+    if (classifyAuthor(author, a.match) === "agent")
+      return a;
+  }
+  return null;
+}
 function explainMatch(author) {
   for (const a of AGENTS) {
     for (const p of a.match) {
@@ -136,7 +143,8 @@ var DEFAULT_POLICY = {
   extraAgentAuthors: [],
   agent: { requireAll: true },
   human: { requireAll: false },
-  identities: []
+  identities: [],
+  behavioralSignals: true
 };
 
 class ConfigError extends Error {
@@ -227,7 +235,8 @@ function parseConfig(raw, source = "config") {
     agentAuthors: [...baseAuthors, ...extraAuthors],
     agent: { requireAll: policyIn.agent?.requireAll ?? DEFAULT_POLICY.agent.requireAll },
     human: { requireAll: policyIn.human?.requireAll ?? DEFAULT_POLICY.human.requireAll },
-    identities: parseIdentities(policyIn.identities, gateNames, source)
+    identities: parseIdentities(policyIn.identities, gateNames, source),
+    behavioralSignals: typeof policyIn.behavioralSignals === "boolean" ? policyIn.behavioralSignals : DEFAULT_POLICY.behavioralSignals
   };
   return {
     version: typeof obj.version === "number" ? obj.version : 1,
@@ -248,6 +257,20 @@ function loadConfig(dir) {
     throw new ConfigError(`${path}: invalid JSON — ${e.message}`);
   }
   return parseConfig(raw, path);
+}
+
+// src/behavior.ts
+var COAUTHOR_RE = /^[ \t]*Co-authored-by:[ \t]*(.+?)[ \t]*$/gim;
+function detectAgentSignal(commitTexts) {
+  for (const text of commitTexts) {
+    for (const m of text.matchAll(COAUTHOR_RE)) {
+      const coauthor = m[1].trim();
+      const entry = matchAgent(coauthor);
+      if (entry)
+        return { entry, evidence: `Co-authored-by: ${coauthor}` };
+    }
+  }
+  return null;
 }
 
 // src/gates.ts
@@ -377,7 +400,7 @@ function isGateRequiredBy(gate, requireAll, rule) {
 function ruleLabel(rule) {
   return rule.label ?? (Array.isArray(rule.match) ? rule.match[0] : rule.match);
 }
-function computeVerdict(results, authorClass, author, protectedBranch, requireAll, rule) {
+function computeVerdict(results, authorClass, author, protectedBranch, requireAll, rule, behavioralSignal) {
   const required = (g) => isGateRequiredBy(g, requireAll, rule);
   const blockedBy = results.filter((g) => required(g) && g.status !== "pass").map((g) => g.name);
   let appliedRule;
@@ -398,16 +421,25 @@ function computeVerdict(results, authorClass, author, protectedBranch, requireAl
     gates: results,
     blockedBy,
     appliedRule,
-    loosenedGates
+    loosenedGates,
+    behavioralSignal
   };
 }
 function evaluate(config, ctx) {
   const policy = config.policy ?? DEFAULT_POLICY;
-  const authorClass = ctx.forceClass ?? classifyAuthor(ctx.author, policy.agentAuthors ?? DEFAULT_POLICY.agentAuthors);
+  let authorClass = ctx.forceClass ?? classifyAuthor(ctx.author, policy.agentAuthors ?? DEFAULT_POLICY.agentAuthors);
+  let behavioralSignal;
+  if (authorClass === "human" && ctx.forceClass === undefined && (policy.behavioralSignals ?? true)) {
+    const sig = detectAgentSignal(ctx.commitTexts ?? []);
+    if (sig) {
+      authorClass = "agent";
+      behavioralSignal = `${sig.entry.label} · ${sig.evidence}`;
+    }
+  }
   const requireAll = authorClass === "agent" ? policy.agent?.requireAll ?? true : policy.human?.requireAll ?? false;
   const rule = matchIdentity(ctx.author, policy.identities);
   const results = runGates(config.gates, ctx);
-  return computeVerdict(results, authorClass, ctx.author, config.protectedBranch ?? "main", requireAll, rule);
+  return computeVerdict(results, authorClass, ctx.author, config.protectedBranch ?? "main", requireAll, rule, behavioralSignal);
 }
 
 // src/report.ts
@@ -436,6 +468,9 @@ function formatReport(v) {
   const classTag = v.authorClass === "agent" ? yellow("agent") : "human";
   const rule = v.appliedRule ? dim(` · policy: ${v.appliedRule}`) : "";
   lines.push(bold("mergegate") + dim(` · guarding ${v.protectedBranch} · author: ${v.author} [${classTag}]`) + rule);
+  if (v.behavioralSignal) {
+    lines.push(yellow(`  ⓘ gated as agent by commit signal: ${v.behavioralSignal}`));
+  }
   if (v.loosenedGates && v.loosenedGates.length > 0) {
     lines.push(yellow(`  ⚠ identity rule "${v.appliedRule}" relaxed ${v.loosenedGates.length} agent gate(s): ${v.loosenedGates.join(", ")}`));
   }
@@ -489,6 +524,10 @@ function formatMarkdown(v) {
   }
   lines.push("");
   lines.push(`**Author:** ${v.author} ${classTag}`);
+  if (v.behavioralSignal) {
+    lines.push("");
+    lines.push(`> ℹ️ Gated as **agent** by a commit signal: ${v.behavioralSignal}`);
+  }
   lines.push("");
   lines.push("| Gate | Status | Detail |");
   lines.push("|---|---|---|");
@@ -589,6 +628,17 @@ function branchCommitMessages(cwd, base) {
   }
   const last = git(["log", "-1", "--pretty=%s"], cwd);
   return last ? [last] : [];
+}
+function branchCommitTexts(cwd, base) {
+  const split = (out) => out ? out.split("\x00").map((s) => s.trim()).filter((s) => s.length > 0) : [];
+  const merge = git(["merge-base", base, "HEAD"], cwd);
+  if (merge) {
+    const out = git(["log", `${merge}..HEAD`, "--no-merges", "-z", "--pretty=%B"], cwd);
+    const texts = split(out);
+    if (texts.length > 0)
+      return texts;
+  }
+  return split(git(["log", "-1", "-z", "--pretty=%B"], cwd));
 }
 function recentAuthors(cwd, n) {
   const out = git(["log", `-${n}`, "--pretty=%an <%ae>"], cwd);
@@ -1362,17 +1412,20 @@ function buildContext(dir, flags, base) {
   } else {
     author = "unknown <unknown>";
   }
+  let commitTexts;
   if (isGitRepo(dir)) {
     commitMessages = branchCommitMessages(dir, base);
+    commitTexts = branchCommitTexts(dir, base);
   } else {
     commitMessages = [];
+    commitTexts = [];
   }
   let forceClass;
   if (flags.agent)
     forceClass = "agent";
   if (flags.human)
     forceClass = "human";
-  return { cwd: dir, author, commitMessages, forceClass };
+  return { cwd: dir, author, commitMessages, commitTexts, forceClass };
 }
 var useColorDefault3 = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
 function strictGuard(v, flags) {

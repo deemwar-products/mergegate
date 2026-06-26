@@ -143,6 +143,7 @@ exactly who'd be gated as an agent vs. who stays human — so you catch a leak b
 | `policy.agentAuthors` | Patterns (regex) that classify an author as an agent. Setting this *replaces* the built-in registry — prefer `extraAgentAuthors` unless you mean to redefine detection wholesale. |
 | `policy.agent.requireAll` | Agent PRs must pass every gate (default `true`). |
 | `policy.human.requireAll` | Force the strict bar for humans too (default `false`). |
+| `policy.behavioralSignals` | Also gate a human-looking author as an agent when a commit carries an agent `Co-Authored-By:` trailer (default `true`). |
 
 ## In CI (GitHub Actions) — one line
 
@@ -228,6 +229,27 @@ $ mergegate agents check
   human  Devin Carter <devin.carter@gmail.com>
   agent  copilot-swe-agent <bot@users.noreply.github.com>  → copilot-swe-agent /copilot-swe-agent/
 ```
+
+### Behavioral signals — the agent run under a human's name
+
+The registry classifies by *who* the commit is authored by. But the fastest-growing case
+is a **human running Claude Code / Copilot / Cursor locally** and committing under *their
+own* name and email — the authorship line says "human", so a naive gate applies the lax
+human policy and an unreviewed agent diff slips onto `main`.
+
+mergegate catches it from the **commit trailer** those tools stamp. When the author looks
+human but a commit carries an agent `Co-Authored-By:` line, the change is gated as an
+agent — and the verdict says why:
+
+```
+$ mergegate check
+mergegate · guarding main · author: Jordan Lee <jordan@example.com> [agent]
+  ⓘ gated as agent by commit signal: Claude Code · Co-authored-by: Claude <noreply@anthropic.com>
+```
+
+The trailer's co-author is matched through the **same** registry, so the human-safety rule
+above carries over for free (a `Co-authored-by: Jordan Lee …` never trips it). It only ever
+escalates human → agent, never the reverse. Opt out with `"policy": { "behavioralSignals": false }`.
 
 ## Checks library
 

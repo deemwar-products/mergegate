@@ -7,6 +7,7 @@ import type {
   IdentityRule,
 } from "./types.ts";
 import { classifyAuthor, matchIdentity } from "./author.ts";
+import { detectAgentSignal } from "./behavior.ts";
 import { runGates } from "./gates.ts";
 import { DEFAULT_POLICY } from "./config.ts";
 
@@ -39,6 +40,7 @@ export function computeVerdict(
   protectedBranch: string,
   requireAll: boolean,
   rule?: IdentityRule | null,
+  behavioralSignal?: string,
 ): Verdict {
   const required = (g: GateResult) => isGateRequiredBy(g, requireAll, rule);
   const blockedBy = results.filter((g) => required(g) && g.status !== "pass").map((g) => g.name);
@@ -65,14 +67,28 @@ export function computeVerdict(
     blockedBy,
     appliedRule,
     loosenedGates,
+    behavioralSignal,
   };
 }
 
 /** End-to-end: classify author, run gates, compute verdict. */
 export function evaluate(config: MergegateConfig, ctx: EvalContext): Verdict {
   const policy = config.policy ?? DEFAULT_POLICY;
-  const authorClass: AuthorClass =
+  let authorClass: AuthorClass =
     ctx.forceClass ?? classifyAuthor(ctx.author, policy.agentAuthors ?? DEFAULT_POLICY.agentAuthors);
+
+  // Behavioral fallback: an identity that looks human can still carry an agent
+  // `Co-Authored-By:` trailer (a human running Claude Code / Copilot locally). Only
+  // escalates human → agent — never the reverse — and only when not explicitly forced.
+  let behavioralSignal: string | undefined;
+  if (authorClass === "human" && ctx.forceClass === undefined && (policy.behavioralSignals ?? true)) {
+    const sig = detectAgentSignal(ctx.commitTexts ?? []);
+    if (sig) {
+      authorClass = "agent";
+      behavioralSignal = `${sig.entry.label} · ${sig.evidence}`;
+    }
+  }
+
   const requireAll =
     authorClass === "agent"
       ? policy.agent?.requireAll ?? true
@@ -87,5 +103,6 @@ export function evaluate(config: MergegateConfig, ctx: EvalContext): Verdict {
     config.protectedBranch ?? "main",
     requireAll,
     rule,
+    behavioralSignal,
   );
 }

@@ -50,6 +50,11 @@ export interface PolicyConfig {
   human?: { requireAll?: boolean };
   /** Granular, identity-aware overrides applied on top of the class default. */
   identities?: IdentityRule[];
+  /** Also classify by commit-message signal: when the author identity looks human but a
+   *  commit carries an agent `Co-Authored-By:` trailer (someone ran Claude Code / Copilot
+   *  locally), treat the change as agent. Reuses the registry; never re-classifies an
+   *  agent as human. Default true; set false to gate purely on the author identity. */
+  behavioralSignals?: boolean;
 }
 
 export interface MergegateConfig {
@@ -88,6 +93,11 @@ export interface Verdict {
   /** For an AGENT author: gates that the agent default would require but the applied
    *  identity rule dropped — the safety signal (the gate was relaxed for an agent). */
   loosenedGates?: GateName[];
+  /** Set when classification came from a commit-message signal rather than the author
+   *  identity — names the agent + the trailer that fired (e.g. "Claude Code · Co-authored-by:
+   *  Claude <noreply@anthropic.com>"). Surfaced so a maintainer sees WHY a human-looking
+   *  author was gated as an agent. */
+  behavioralSignal?: string;
 }
 
 /** Context the engine needs to evaluate a changeset. */
@@ -97,6 +107,10 @@ export interface EvalContext {
   author: string;
   /** Commit subjects on the branch (for builtin:spec). */
   commitMessages: string[];
+  /** Full commit messages (subject + body) on the branch — carries the agent attribution
+   *  trailers the subject omits (for behavioral classification). Optional: absent in unit
+   *  contexts that only exercise identity/gates. */
+  commitTexts?: string[];
   /** Optional override of author class (e.g. forced via --agent). */
   forceClass?: AuthorClass;
 }
