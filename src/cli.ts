@@ -56,6 +56,8 @@ COMMANDS
   checks                Browse the curated library of pre-built checks for common agent-PR
                         failure modes. \`checks show <id>\` prints the gate snippet; \`checks add
                         <id>\` appends it into mergegate.config.json. \`--stack node|go|rust|python\`.
+                        Org-defined checks in a checkpack (mergegate.checks.json, or \`--pack
+                        <path>\`) show up here too, tagged (custom), and add the same way.
   version               Print version.
   help                  Show this help.
 

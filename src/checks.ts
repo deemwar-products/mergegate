@@ -24,8 +24,9 @@
 
 import type { GateConfig } from "./types.ts";
 
-/** Buckets a check belongs to: the stack it targets, or universal `hygiene`. */
-export type CheckCategory = "hygiene" | "node" | "go" | "rust" | "python";
+/** Buckets a check belongs to: the stack it targets, universal `hygiene`, or `custom`
+ *  for an org-defined check from a checkpack (src/checkpack.ts) that targets no one stack. */
+export type CheckCategory = "hygiene" | "node" | "go" | "rust" | "python" | "custom";
 
 export interface CheckEntry {
   /** Stable kebab-case key — unique, used in `checks` output and `checks add <id>`. */
@@ -281,8 +282,9 @@ const PYTHON: CheckEntry[] = [
 /** The full curated catalog, in display order (hygiene first, then by stack). */
 export const CHECKS: CheckEntry[] = [...HYGIENE, ...NODE, ...GO, ...RUST, ...PYTHON];
 
-/** All categories present, in canonical display order. */
-export const CHECK_CATEGORIES: CheckCategory[] = ["hygiene", "node", "go", "rust", "python"];
+/** All categories present, in canonical display order (`custom` last — org checks
+ *  render after the built-ins that share their tab). */
+export const CHECK_CATEGORIES: CheckCategory[] = ["hygiene", "node", "go", "rust", "python", "custom"];
 
 /** Look one check up by its id. */
 export function findCheck(id: string): CheckEntry | undefined {
@@ -292,4 +294,19 @@ export function findCheck(id: string): CheckEntry | undefined {
 /** Filter the catalog by category (the stack tab) — undefined returns everything. */
 export function checksByCategory(category?: CheckCategory): CheckEntry[] {
   return category ? CHECKS.filter((c) => c.category === category) : CHECKS;
+}
+
+/** Overlay an org checkpack onto the built-in catalog: a custom entry whose id matches
+ *  a built-in REPLACES it (so an org can tighten a default in place), and a new id is
+ *  appended. Returns the merged catalog in canonical category order, plus the set of ids
+ *  the pack contributed — the command layer tags those `(custom)`. Pure: it never reads
+ *  files (the caller supplies the parsed pack), so it's trivially testable. */
+export function mergeChecks(custom: CheckEntry[]): { entries: CheckEntry[]; customIds: Set<string> } {
+  const customIds = new Set(custom.map((c) => c.id));
+  const byId = new Map<string, CheckEntry>();
+  for (const c of CHECKS) byId.set(c.id, c);
+  for (const c of custom) byId.set(c.id, c); // override a built-in id, or add a new one
+  const all = [...byId.values()];
+  const entries = CHECK_CATEGORIES.flatMap((cat) => all.filter((c) => c.category === cat));
+  return { entries, customIds };
 }
