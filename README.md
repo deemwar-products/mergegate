@@ -287,6 +287,42 @@ check is just a normal gate, it composes with your policy and identity rules for
 agent PRs must pass it; humans honor its `required` flag. The catalog lives in
 `src/checks.ts`; adding one is a one-entry PR.
 
+### Your own checks — a checkpack
+
+Your org has conventions a generic catalog can't know: a banned-import rule, a required
+license header, a "no calls to the deprecated client" check. Don't fork the binary — drop
+a **checkpack** (`mergegate.checks.json`) beside your config. Its entries show up in
+`checks list / show / add` right alongside the built-ins, tagged `(custom)`, and add the
+same way:
+
+```json
+{
+  "checks": [
+    {
+      "id": "no-internal-urls",
+      "label": "No internal URLs in public files",
+      "why": "An agent scaffolding docs can paste an internal staging URL into a public file.",
+      "gate": {
+        "run": "git grep -nE 'internal\\.acme\\.dev' -- . && exit 1 || exit 0",
+        "required": true
+      }
+    }
+  ]
+}
+```
+
+```
+$ mergegate checks                      # built-ins + your pack, custom ones tagged (custom)
+$ mergegate checks add no-internal-urls # drops the gate into mergegate.config.json
+$ mergegate checks --pack team.json     # or point at a pack anywhere
+```
+
+Each entry is the same shape as a built-in: `id` (kebab-case), optional `label` / `why` /
+`category` (`hygiene`·`node`·`go`·`rust`·`python`, else `custom`) / `gateName`, and a
+`gate` with a `run` command. A custom `id` that matches a built-in **replaces** it — the
+way to tighten a default in place. No new evaluator runs anything: `checks add` writes a
+gate you review, then `mergegate check` runs it like any other.
+
 **Your own fleet missing?** Don't edit source — add its commit identity to
 `policy.extraAgentAuthors` in your config (see [Quick start](#quick-start)). That's the
 right path for an org's private agents; it merges on top of the built-in registry.

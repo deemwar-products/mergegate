@@ -3,11 +3,11 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import {
   CHECKS,
   CHECK_CATEGORIES,
-  findCheck,
-  checksByCategory,
+  mergeChecks,
   type CheckCategory,
   type CheckEntry,
 } from "../checks.ts";
+import { loadCheckpack, CheckpackError } from "../checkpack.ts";
 import { CONFIG_FILENAMES } from "../config.ts";
 
 // ── tiny flag parse (kept local to avoid a cli.ts <-> commands import cycle) ──
@@ -42,11 +42,17 @@ function isCategory(s: string): s is CheckCategory {
   return (CHECK_CATEGORIES as string[]).includes(s);
 }
 
-/** The `mergegate checks` table — every curated check, grouped by category. */
-export function formatChecksList(entries: CheckEntry[], useColor: boolean): string {
+/** The `mergegate checks` table — every curated check, grouped by category. Ids in
+ *  `customIds` (from an org checkpack) are tagged `(custom)` so a maintainer can see at a
+ *  glance which gates are org-defined vs. built-in. */
+export function formatChecksList(
+  entries: CheckEntry[],
+  useColor: boolean,
+  customIds: Set<string> = new Set(),
+): string {
   const idW = Math.max(2, ...entries.map((c) => c.id.length));
   const lines: string[] = [];
-  lines.push(`mergegate · ${CHECKS.length} pre-built checks for the common agent-PR failure modes`);
+  lines.push(`mergegate · ${entries.length} pre-built checks for the common agent-PR failure modes`);
   lines.push("");
   let lastCat: CheckCategory | null = null;
   for (const c of entries) {
@@ -55,7 +61,8 @@ export function formatChecksList(entries: CheckEntry[], useColor: boolean): stri
       lines.push(bold(useColor, c.category));
       lastCat = c.category;
     }
-    lines.push(`  ${cyan(useColor, c.id.padEnd(idW))}  ${c.label}`);
+    const tag = customIds.has(c.id) ? dim(useColor, " (custom)") : "";
+    lines.push(`  ${cyan(useColor, c.id.padEnd(idW))}  ${c.label}${tag}`);
     lines.push(`  ${" ".repeat(idW)}  ${dim(useColor, c.why)}`);
   }
   lines.push("");
@@ -65,10 +72,11 @@ export function formatChecksList(entries: CheckEntry[], useColor: boolean): stri
 }
 
 /** `mergegate checks show <id>` — the rationale, the gate config, and the add hint. */
-export function formatCheckDetail(c: CheckEntry, useColor: boolean): string {
+export function formatCheckDetail(c: CheckEntry, useColor: boolean, isCustom = false): string {
   const snippet = JSON.stringify({ [c.gateName]: c.gate }, null, 2);
+  const origin = isCustom ? dim(useColor, " (custom)") : "";
   const lines = [
-    `${cyan(useColor, c.id)}  ${bold(useColor, c.label)}  ${dim(useColor, `[${c.category}]`)}`,
+    `${cyan(useColor, c.id)}  ${bold(useColor, c.label)}${origin}  ${dim(useColor, `[${c.category}]`)}`,
     "",
     `  ${c.why}`,
     "",
@@ -97,16 +105,22 @@ function uniqueGateName(base: string, existing: Set<string>): string {
   }
 }
 
-/** `mergegate checks add <id>` — append the check's gate to mergegate.config.json. */
-function runAdd(ids: string[], flags: Record<string, string | boolean>): number {
-  const dir = resolve(typeof flags.dir === "string" ? flags.dir : ".");
+/** `mergegate checks add <id>` — append the check's gate to mergegate.config.json.
+ *  `catalog` is the built-in checks merged with any org checkpack, so a custom check
+ *  adds exactly like a built-in one. */
+function runAdd(
+  ids: string[],
+  flags: Record<string, string | boolean>,
+  dir: string,
+  catalog: CheckEntry[],
+): number {
   if (ids.length === 0) {
     console.error("mergegate: `checks add` needs at least one check id (see `mergegate checks`).");
     return 2;
   }
   const entries: CheckEntry[] = [];
   for (const id of ids) {
-    const c = findCheck(id);
+    const c = catalog.find((x) => x.id === id);
     if (!c) {
       console.error(`mergegate: unknown check "${id}". Run \`mergegate checks\` to list them.`);
       return 2;
@@ -167,9 +181,27 @@ export function cmdChecks(args: string[]): number {
   const { _, flags } = parseFlags(args);
   const useColor = useColorDefault();
   const sub = _[0];
+  const dir = resolve(typeof flags.dir === "string" ? flags.dir : ".");
+
+  // Load any org checkpack (explicit `--pack <path>`, else auto-discover beside the
+  // config) and merge it over the built-in catalog, so list / show / add all operate on
+  // the same combined set. An absent pack leaves the catalog as the built-ins.
+  let catalog = CHECKS;
+  let customIds = new Set<string>();
+  try {
+    const explicit = typeof flags.pack === "string" ? resolve(flags.pack) : undefined;
+    const { checks } = loadCheckpack(dir, explicit);
+    if (checks.length) ({ entries: catalog, customIds } = mergeChecks(checks));
+  } catch (e) {
+    if (e instanceof CheckpackError) {
+      console.error(`mergegate: ${e.message}`);
+      return 2;
+    }
+    throw e;
+  }
 
   // `mergegate checks add <id...>`
-  if (sub === "add") return runAdd(_.slice(1), flags);
+  if (sub === "add") return runAdd(_.slice(1), flags, dir, catalog);
 
   // `mergegate checks show <id>`
   if (sub === "show") {
@@ -178,7 +210,7 @@ export function cmdChecks(args: string[]): number {
       console.error("mergegate: `checks show` needs a check id (see `mergegate checks`).");
       return 2;
     }
-    const c = findCheck(id);
+    const c = catalog.find((x) => x.id === id);
     if (!c) {
       console.error(`mergegate: unknown check "${id}". Run \`mergegate checks\` to list them.`);
       return 2;
@@ -186,25 +218,25 @@ export function cmdChecks(args: string[]): number {
     if (flags.json) {
       console.log(JSON.stringify(c, null, 2));
     } else {
-      console.log(formatCheckDetail(c, useColor));
+      console.log(formatCheckDetail(c, useColor, customIds.has(c.id)));
     }
     return 0;
   }
 
   // `mergegate checks` / `checks list` [--stack <cat> | --category <cat>]
   const catFlag = (typeof flags.stack === "string" && flags.stack) || (typeof flags.category === "string" && flags.category) || null;
-  let entries = CHECKS;
+  let entries = catalog;
   if (catFlag) {
     if (!isCategory(catFlag)) {
       console.error(`mergegate: unknown category "${catFlag}" (known: ${CHECK_CATEGORIES.join(", ")}).`);
       return 2;
     }
-    entries = checksByCategory(catFlag);
+    entries = catalog.filter((c) => c.category === catFlag);
   }
   if (flags.json) {
     console.log(JSON.stringify(entries, null, 2));
     return 0;
   }
-  console.log(formatChecksList(entries, useColor));
+  console.log(formatChecksList(entries, useColor, customIds));
   return 0;
 }

@@ -51,9 +51,12 @@ describe("checks registry", () => {
   });
 
   test("ships at least the agent-smell hygiene checks and all four stacks", () => {
-    for (const cat of CHECK_CATEGORIES) {
+    // Every built-in stack ships checks; `custom` is the checkpack-only bucket
+    // (src/checkpack.ts) and intentionally has no built-in entries.
+    for (const cat of CHECK_CATEGORIES.filter((c) => c !== "custom")) {
       expect(checksByCategory(cat).length).toBeGreaterThan(0);
     }
+    expect(checksByCategory("custom")).toHaveLength(0);
     for (const id of ["no-conflict-markers", "no-private-keys", "no-focused-tests-js"]) {
       expect(findCheck(id)).toBeDefined();
     }

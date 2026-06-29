@@ -922,8 +922,8 @@ function cmdAgents(args) {
 }
 
 // src/commands/checks.ts
-import { resolve as resolve4, join as join4 } from "node:path";
-import { readFileSync as readFileSync3, writeFileSync as writeFileSync3, existsSync as existsSync4 } from "node:fs";
+import { resolve as resolve4, join as join5 } from "node:path";
+import { readFileSync as readFileSync4, writeFileSync as writeFileSync3, existsSync as existsSync5 } from "node:fs";
 
 // src/checks.ts
 var HYGIENE = [
@@ -1149,12 +1149,98 @@ var PYTHON = [
   }
 ];
 var CHECKS = [...HYGIENE, ...NODE, ...GO, ...RUST, ...PYTHON];
-var CHECK_CATEGORIES = ["hygiene", "node", "go", "rust", "python"];
-function findCheck(id) {
-  return CHECKS.find((c2) => c2.id === id);
+var CHECK_CATEGORIES = ["hygiene", "node", "go", "rust", "python", "custom"];
+function mergeChecks(custom) {
+  const customIds = new Set(custom.map((c2) => c2.id));
+  const byId = new Map;
+  for (const c2 of CHECKS)
+    byId.set(c2.id, c2);
+  for (const c2 of custom)
+    byId.set(c2.id, c2);
+  const all = [...byId.values()];
+  const entries = CHECK_CATEGORIES.flatMap((cat) => all.filter((c2) => c2.category === cat));
+  return { entries, customIds };
 }
-function checksByCategory(category) {
-  return category ? CHECKS.filter((c2) => c2.category === category) : CHECKS;
+
+// src/checkpack.ts
+import { readFileSync as readFileSync3, existsSync as existsSync4 } from "node:fs";
+import { join as join4 } from "node:path";
+var CHECKPACK_FILENAMES = ["mergegate.checks.json", ".mergegate.checks.json"];
+
+class CheckpackError extends Error {
+}
+var KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+function isCategory(s) {
+  return CHECK_CATEGORIES.includes(s);
+}
+function parseCheckpack(raw, source = "checkpack") {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new CheckpackError(`${source}: expected a JSON object with a "checks" array`);
+  }
+  const obj = raw;
+  if (!Array.isArray(obj.checks)) {
+    throw new CheckpackError(`${source}: "checks" must be an array`);
+  }
+  const seen = new Set;
+  return obj.checks.map((r, i) => {
+    const where = `${source}: checks[${i}]`;
+    if (typeof r !== "object" || r === null || Array.isArray(r)) {
+      throw new CheckpackError(`${where} must be an object`);
+    }
+    const e = r;
+    if (typeof e.id !== "string" || !KEBAB.test(e.id)) {
+      throw new CheckpackError(`${where} needs a kebab-case "id" (e.g. "no-internal-urls")`);
+    }
+    if (seen.has(e.id)) {
+      throw new CheckpackError(`${where} duplicate id "${e.id}" in this pack`);
+    }
+    seen.add(e.id);
+    let category = "custom";
+    if (e.category !== undefined) {
+      if (typeof e.category !== "string" || !isCategory(e.category)) {
+        throw new CheckpackError(`${where} "category" must be one of: ${CHECK_CATEGORIES.join(", ")}`);
+      }
+      category = e.category;
+    }
+    if (typeof e.gate !== "object" || e.gate === null || Array.isArray(e.gate)) {
+      throw new CheckpackError(`${where} needs a "gate" object`);
+    }
+    const gate = e.gate;
+    if (typeof gate.run !== "string" && gate.builtin !== "spec") {
+      throw new CheckpackError(`${where} gate needs a "run" command (or builtin "spec")`);
+    }
+    return {
+      id: e.id,
+      label: typeof e.label === "string" && e.label ? e.label : e.id,
+      category,
+      why: typeof e.why === "string" ? e.why : "",
+      gateName: typeof e.gateName === "string" && e.gateName ? e.gateName : e.id,
+      gate: e.gate
+    };
+  });
+}
+function findCheckpackPath(dir) {
+  for (const name of CHECKPACK_FILENAMES) {
+    const p = join4(dir, name);
+    if (existsSync4(p))
+      return p;
+  }
+  return null;
+}
+function loadCheckpack(dir, explicitPath) {
+  const path = explicitPath ?? findCheckpackPath(dir);
+  if (!path)
+    return { checks: [], source: null };
+  if (!existsSync4(path)) {
+    throw new CheckpackError(`checkpack not found: ${path}`);
+  }
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync3(path, "utf8"));
+  } catch (e) {
+    throw new CheckpackError(`${path}: invalid JSON — ${e.message}`);
+  }
+  return { checks: parseCheckpack(raw, path), source: path };
 }
 
 // src/commands/checks.ts
@@ -1183,13 +1269,13 @@ var paint3 = (on, code, s) => on ? `\x1B[${code}m${s}\x1B[0m` : s;
 var dim3 = (on, s) => paint3(on, "2", s);
 var bold2 = (on, s) => paint3(on, "1", s);
 var cyan2 = (on, s) => paint3(on, "36", s);
-function isCategory(s) {
+function isCategory2(s) {
   return CHECK_CATEGORIES.includes(s);
 }
-function formatChecksList(entries, useColor2) {
+function formatChecksList(entries, useColor2, customIds = new Set) {
   const idW = Math.max(2, ...entries.map((c2) => c2.id.length));
   const lines = [];
-  lines.push(`mergegate · ${CHECKS.length} pre-built checks for the common agent-PR failure modes`);
+  lines.push(`mergegate · ${entries.length} pre-built checks for the common agent-PR failure modes`);
   lines.push("");
   let lastCat = null;
   for (const c2 of entries) {
@@ -1199,7 +1285,8 @@ function formatChecksList(entries, useColor2) {
       lines.push(bold2(useColor2, c2.category));
       lastCat = c2.category;
     }
-    lines.push(`  ${cyan2(useColor2, c2.id.padEnd(idW))}  ${c2.label}`);
+    const tag = customIds.has(c2.id) ? dim3(useColor2, " (custom)") : "";
+    lines.push(`  ${cyan2(useColor2, c2.id.padEnd(idW))}  ${c2.label}${tag}`);
     lines.push(`  ${" ".repeat(idW)}  ${dim3(useColor2, c2.why)}`);
   }
   lines.push("");
@@ -1208,10 +1295,11 @@ function formatChecksList(entries, useColor2) {
   return lines.join(`
 `);
 }
-function formatCheckDetail(c2, useColor2) {
+function formatCheckDetail(c2, useColor2, isCustom = false) {
   const snippet = JSON.stringify({ [c2.gateName]: c2.gate }, null, 2);
+  const origin = isCustom ? dim3(useColor2, " (custom)") : "";
   const lines = [
-    `${cyan2(useColor2, c2.id)}  ${bold2(useColor2, c2.label)}  ${dim3(useColor2, `[${c2.category}]`)}`,
+    `${cyan2(useColor2, c2.id)}  ${bold2(useColor2, c2.label)}${origin}  ${dim3(useColor2, `[${c2.category}]`)}`,
     "",
     `  ${c2.why}`,
     "",
@@ -1227,8 +1315,8 @@ function formatCheckDetail(c2, useColor2) {
 }
 function findConfigPath2(dir) {
   for (const name of CONFIG_FILENAMES) {
-    const p = join4(dir, name);
-    if (existsSync4(p))
+    const p = join5(dir, name);
+    if (existsSync5(p))
       return p;
   }
   return null;
@@ -1242,15 +1330,14 @@ function uniqueGateName(base, existing) {
       return candidate;
   }
 }
-function runAdd(ids, flags) {
-  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+function runAdd(ids, flags, dir, catalog) {
   if (ids.length === 0) {
     console.error("mergegate: `checks add` needs at least one check id (see `mergegate checks`).");
     return 2;
   }
   const entries = [];
   for (const id of ids) {
-    const c2 = findCheck(id);
+    const c2 = catalog.find((x) => x.id === id);
     if (!c2) {
       console.error(`mergegate: unknown check "${id}". Run \`mergegate checks\` to list them.`);
       return 2;
@@ -1264,7 +1351,7 @@ function runAdd(ids, flags) {
   }
   let config;
   try {
-    config = JSON.parse(readFileSync3(path, "utf8"));
+    config = JSON.parse(readFileSync4(path, "utf8"));
   } catch (e) {
     console.error(`mergegate: ${path}: invalid JSON — ${e.message}`);
     return 2;
@@ -1306,15 +1393,30 @@ function cmdChecks(args) {
   const { _, flags } = parseFlags2(args);
   const useColor2 = useColorDefault2();
   const sub = _[0];
+  const dir = resolve4(typeof flags.dir === "string" ? flags.dir : ".");
+  let catalog = CHECKS;
+  let customIds = new Set;
+  try {
+    const explicit = typeof flags.pack === "string" ? resolve4(flags.pack) : undefined;
+    const { checks } = loadCheckpack(dir, explicit);
+    if (checks.length)
+      ({ entries: catalog, customIds } = mergeChecks(checks));
+  } catch (e) {
+    if (e instanceof CheckpackError) {
+      console.error(`mergegate: ${e.message}`);
+      return 2;
+    }
+    throw e;
+  }
   if (sub === "add")
-    return runAdd(_.slice(1), flags);
+    return runAdd(_.slice(1), flags, dir, catalog);
   if (sub === "show") {
     const id = _[1];
     if (!id) {
       console.error("mergegate: `checks show` needs a check id (see `mergegate checks`).");
       return 2;
     }
-    const c2 = findCheck(id);
+    const c2 = catalog.find((x) => x.id === id);
     if (!c2) {
       console.error(`mergegate: unknown check "${id}". Run \`mergegate checks\` to list them.`);
       return 2;
@@ -1322,24 +1424,24 @@ function cmdChecks(args) {
     if (flags.json) {
       console.log(JSON.stringify(c2, null, 2));
     } else {
-      console.log(formatCheckDetail(c2, useColor2));
+      console.log(formatCheckDetail(c2, useColor2, customIds.has(c2.id)));
     }
     return 0;
   }
   const catFlag = typeof flags.stack === "string" && flags.stack || typeof flags.category === "string" && flags.category || null;
-  let entries = CHECKS;
+  let entries = catalog;
   if (catFlag) {
-    if (!isCategory(catFlag)) {
+    if (!isCategory2(catFlag)) {
       console.error(`mergegate: unknown category "${catFlag}" (known: ${CHECK_CATEGORIES.join(", ")}).`);
       return 2;
     }
-    entries = checksByCategory(catFlag);
+    entries = catalog.filter((c2) => c2.category === catFlag);
   }
   if (flags.json) {
     console.log(JSON.stringify(entries, null, 2));
     return 0;
   }
-  console.log(formatChecksList(entries, useColor2));
+  console.log(formatChecksList(entries, useColor2, customIds));
   return 0;
 }
 
@@ -1388,6 +1490,8 @@ COMMANDS
   checks                Browse the curated library of pre-built checks for common agent-PR
                         failure modes. \`checks show <id>\` prints the gate snippet; \`checks add
                         <id>\` appends it into mergegate.config.json. \`--stack node|go|rust|python\`.
+                        Org-defined checks in a checkpack (mergegate.checks.json, or \`--pack
+                        <path>\`) show up here too, tagged (custom), and add the same way.
   version               Print version.
   help                  Show this help.
 
